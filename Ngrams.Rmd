@@ -1,0 +1,338 @@
+---
+title: "ngrams"
+author: "Janis Corona"
+date: "4/20/2020"
+output: html_document
+---
+
+
+This uses a previous python3 script inside R with reticulate to communicate python code within R. This will classify a wellness or health category based on it being one of either articles pulled from the internet on: physical therapy benefits, massage therapy benefits, chiropractic benefits, massage gun benefits, benefits of mental health services, cold stone therapy benefits, or cupping benefits. Then some 'non professional' google and twitter massage posts were added in to this selection to see how well the classifier could discriminate between one of the seven professional healthcare recommendations and a non-professional recommendation. This script also uses added data on medical professional or ER visit recommended based on user input. This data now has 9 categories to classify based on user input. Also, the risks, effects, and contraindications were scrubbed from the document of each class if it existed and placed into their corresponding feature of 'contraindication' or 'risksAdverseEffect.' This should improve the accuracy in classifying a recommendation for user inputs based on his or her requests.
+
+The python packages were sklearn, matplotlib, pandas, numpy, nltk, textBlob, and regex. Some versions that work are later modules, for instance the re package was used that made regex obsolete because it is a build version that replaced regex for my version of python, 3.6.
+
+```{r}
+library(reticulate)
+```
+
+```{r}
+conda_list(conda = "auto") 
+
+```
+
+Without having my python IDE, Anaconda, open in the console I want to use the python36 environment, all the environments in Anaconda for python are listed above.
+
+```{r}
+use_condaenv(condaenv = "python36")
+
+```
+
+```{python}
+import pandas as pd 
+import matplotlib.pyplot as plt 
+from textblob import TextBlob 
+import sklearn 
+import numpy as np 
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer 
+from sklearn.naive_bayes import MultinomialNB 
+from sklearn.metrics import classification_report, f1_score, accuracy_score, confusion_matrix 
+
+import re
+import string
+import nltk 
+
+np.random.seed(47) 
+```
+
+```{r}
+set.seed(47)
+```
+
+The following data table will not show in your Rstudio environment, but python inside your python IDE will store the table.
+```{python}
+modalities = pd.read_csv('benefitsContraindications3.csv', encoding = 'unicode_escape') 
+```
+
+
+```{python}
+print(modalities.head())
+print(modalities.tail())
+```
+
+
+```{python}
+print(modalities.shape)
+print(modalities.columns)
+```
+
+
+```{python}
+import regex
+def preprocessor(text):
+    text = regex.sub('<[^>]*>', '', text)
+    emoticons = regex.findall('(?::|;|=)(?:-)?(?:\)|\(|D|P)', text)
+    text = regex.sub('[\W]+', ' ', text.lower()) +\
+        ' '.join(emoticons).replace('-', '')
+    return text
+```
+
+
+```{python}
+modalities.tail()
+```
+
+Reorder the observations so that they are mixed and not grouped together as they are in the original file.
+```{python}
+import numpy as np
+
+modalities = modalities.reindex(np.random.permutation(modalities.index))
+
+print(modalities.head())
+print(modalities.tail())
+```
+
+
+```{python}
+modalities.columns
+modalities.groupby('Topic').describe()
+```
+
+
+```{python}
+modalities['length'] = modalities['Document'].map(lambda text: len(text))
+print(modalities.head())
+```
+
+
+```{python,eval=FALSE}
+modalities.length.plot(bins=20, kind='hist')
+plt.show()
+```
+
+```{r echo=FALSE, out.width='100%'}
+knitr::include_graphics('docTextLength4.png')
+```
+
+
+```{python}
+modalities.length.describe()
+```
+
+
+```{python}
+print(list(modalities.Document[modalities.length > 3800].index))
+print(list(modalities.Topic[modalities.length > 3800]))
+
+```
+
+
+```{python,eval=FALSE}
+
+modalities.hist(column='length', by='Topic', bins=5)
+
+
+plt.show()
+```
+
+```{r echo=FALSE, out.width='100%'}
+knitr::include_graphics('TopicHist4.png')
+```
+
+```{python}
+def split_into_tokens(review):
+    
+    return TextBlob(review).words
+```
+
+
+```{python}
+modalities.Document.head().apply(split_into_tokens)
+```
+
+
+```{python}
+TextBlob("hello world, how is it going?").tags  # list of (word, POS) pairs
+```
+
+
+```{python}
+import nltk
+nltk.download('stopwords')
+
+```
+
+
+```{python}
+from nltk.corpus import stopwords
+
+stop = stopwords.words('english')
+stop = stop + [u'a',u'b',u'c',u'd',u'e',u'f',u'g',u'h',u'i',u'j',u'k',u'l',u'm',u'n',u'o',u'p',u'q',u'r',u's',u't',u'v',u'w',u'x',u'y',u'z']
+
+
+```
+
+
+```{python}
+def split_into_lemmas(review):
+    #review = unicode(review, 'iso-8859-1')
+    review = review.lower()
+    #review = unicode(review, 'utf8').lower()
+    #review = str(review).lower()
+    words = TextBlob(review).words
+    # for each word, take its "base form" = lemma 
+    return [word.lemma for word in words if word not in stop]
+
+modalities.Document.head().apply(split_into_lemmas)
+```
+
+
+
+```{python}
+bow_transformerNgrams = CountVectorizer(analyzer=split_into_lemmas,ngram_range=(2,2)).fit(modalities['Document'])
+          
+print(len(bow_transformerNgrams.vocabulary_))
+
+
+```
+
+
+```{python}
+modality4 = modalities['Document'][40]
+print(modality4)
+```
+
+
+```{python}
+bow4 = bow_transformerNgrams.transform([modality4])
+print(bow4)
+```
+
+
+```{python}
+modalities_bow = bow_transformerNgrams.transform(modalities['Document'])
+print('sparse matrix shape:', modalities_bow.shape)
+print('number of non-zeros:', modalities_bow.nnz)
+print('sparsity: %.2f%%' % (100.0 * modalities_bow.nnz / (modalities_bow.shape[0] * modalities_bow.shape[1])))
+```
+
+
+```{python}
+modalities_bow
+```
+
+```{python}
+
+# Split/splice into training ~ 80% and testing ~ 20%
+modalities_bow_train = modalities_bow[:69]
+modalities_bow_test = modalities_bow[69:]
+modalities_sentiment_train = modalities['Topic'][:69]
+modalities_sentiment_test = modalities['Topic'][69:]
+
+print(modalities_bow_train.shape)
+print(modalities_bow_test.shape)
+print
+```
+
+
+```{python}
+modalities_sentiment = MultinomialNB().fit(modalities_bow_train, modalities_sentiment_train)
+```
+
+
+```{python}
+print('predicted:', modalities_sentiment.predict(bow4)[0])
+print('expected:', modalities.Topic[40])
+```
+
+
+```{python, error=FALSE, message=FALSE, warning=FALSE}
+predictions = modalities_sentiment.predict(modalities_bow_test)
+#print(predictions)
+
+prd = pd.DataFrame(predictions)
+prd.columns=['predictions']
+prd.index=modalities_sentiment_test.index
+pred=pd.concat([pd.DataFrame(prd),modalities_sentiment_test],axis=1)
+print(pred)
+
+```
+
+
+```{python}
+print('accuracy', accuracy_score(modalities_sentiment_test, predictions))
+print('confusion matrix\n', confusion_matrix(modalities_sentiment_test, predictions))
+print('(row=expected, col=predicted)')
+```
+
+```{python}
+print(classification_report(modalities_sentiment_test, predictions))
+```
+From the above, precision accounts for type 1 errors (how many real negatives classified as positives-False Positives: TP/(TP+FP)) and type 2 errors (how many real posiives classified as negatives-False Negatives: TP/(TP+FN)) are part of recall.
+
+```{python}
+modalitiesu = modalities.Topic.unique()
+mus = np.sort(modalitiesu)
+mus
+```
+
+
+```{python}
+
+def predict_modality(new_review): 
+    new_sample = bow_transformerNgrams.transform([new_review])
+    pr = np.around(modalities_sentiment.predict_proba(new_sample),2)
+    print(new_review,'\n\n', pr)
+    print('\n\nThe respective order:\n 0-ER\n 1-Non Professional\n 2-chiropractic therapy\n 3-cold stone therapy\n 4-cupping therapy\n 5-massage therapy\n 6-massage gun therapy\n 7-mental health therapy\n 8-physical therapy\n\n')
+    
+    if (pr[0][0] == max(pr[0])):
+        print('The max probability is Emergency Room services for this recommendation with ', pr[0][0]*100,'%')
+    elif (pr[0][1] == max(pr[0])):
+        print('The max probability is Non-Professional services for this recommendation with ', pr[0][1]*100,'%')
+        
+    elif (pr[0][2] == max(pr[0])):
+        print('The max probability is chiropractic therapy for this recommendation with ', pr[0][2]*100,'%')
+        
+    elif (pr[0][3] == max(pr[0])):
+        print('The max probability is cold stone massage for this recommendation with ', pr[0][3]*100,'%')
+        
+    elif (pr[0][4] == max(pr[0])):
+        print('The max probability is cupping therapy for this recommendation with ', pr[0][4]*100,'%')
+   
+    elif (pr[0][5] == max(pr[0])):
+        print('The max probability is massage therapy for this recommendation with ', pr[0][5]*100,'%')
+    
+    elif (pr[0][6] == max(pr[0])):
+        print('The max probability is massage gun therapy for this recommendation with ', pr[0][6]*100,'%')
+    
+    elif (pr[0][7] == max(pr[0])):
+        print('The max probability is mental health therapy for this recommendation with ', pr[0][7]*100,'%')
+    
+    else:
+        print('The max probability is physical therapy for this recommendation with ', pr[0][8]*100,'%')
+    
+    print('-----------------------------------------\n\n')
+
+```
+
+
+```{python}
+predict_modality('Headaches, body sweats, depressed.')
+
+predict_modality('sleepless, energy depraved, cold, tension')
+
+predict_modality('body aches from working out')
+predict_modality('can\'t move my arm. stuck at home. worried about my neck.')
+```
+
+```{python}
+predict_modality('breathing ragged, tired, headaches, dizzy, nausious ')
+
+```
+
+```{python}
+predict_modality("relief from this pain. can't sleep. feet hurt. chills.")
+```
+
+```{python}
+predict_modality('love this place better than others')
+```
+

@@ -1006,3 +1006,7 @@ benefits_cbd
 contra_cbd
 ```
 
+The above demonstrates the benefits of CBD as a list of double word pairs or bigrams with the stop words stripped, and the bottom list is the longer list of trigrams of three word groups for the contraindications for CBD with the stopwords stripped. What we now want is a way to get the user the have a user input that will scan the list of contraindications for each massage modality, and if it is in the list of a modality, then it will be excluded from the list of available massage modalities for the user. 
+
+Looking at the above list the contraindications are grouped together that are different health conditions like psychosis (and) numbness (in the) limb. Users don't want to scan a list of 500 health conditions or even more than 10, but any health conditions they have will have to be reported before scheduling a massage so that it isn't cancelled or booked for the wrong modality. Lets assume the user honestly includes every possible health condition and history of their health conditions for serious medical conditions, then we want this program to scan those groups of words and find the modalities the user absolutely should not have, so that a list of available massage modalities are provided for the user to select the best one for benefits.
+

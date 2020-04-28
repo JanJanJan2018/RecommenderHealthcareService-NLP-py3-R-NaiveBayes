@@ -620,8 +620,389 @@ Wonderful! But now lets try to get some of the modalities other than CBD, biofre
 
 ```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
 predict_ngramGBC_lemma('I want either a Swedish or Deep Tissue massage, I want a lot of pressure, and need to fall asleep, I workout, have stress at work, alright with some hot stones or cold stones, or added cups.')
+```
+
+
+
+Our next model will use ngrams on the modality description to better capture the tokenized words for each modality, and keep the bigrams on benefits and trigrams on contraindications.Also, there should be a filter system so that those contraindicated massage modalities are excluded from the next run using the benefits or expectations of a user. These choices are selecting both benefits and those massages contraindicated with the current design. This did make the prediction on the testing set 100% accurate as it should, because only using benefits or contraindications tokenized produced a precision error on classifying hot stone therapy as deep tissue massage from a previous script done in Jupyter Notebook for python.
+
+
+***
+
+Lets switch to R.
+```{r}
+ngrams23All <- read.csv('lemmNgramsBenefits2Contraindications3.csv', sep=',', header=TRUE,
+                        na.strings=c('',' ','NA'))
+```
+
+```{r}
+unique(ngrams23All$modality)
 
 ```
 
-Our next model will use ngrams on the modality description to better capture the tokenized words for each modality, and keep the bigrams on benefits and trigrams on contraindications.
+```{r}
+myofascial <- subset(ngrams23All, ngrams23All$modality=='Myofascial Massage')
+dim(myofascial)
+```
+
+```{r}
+myofascial1 <- myofascial[,-c(1:3)]
+myofascial2 <- subset(myofascial1, colSums(myofascial1)!=0)
+dim(myofascial2)
+```
+```{r}
+myofascial2 <- myofascial1[,colSums(myofascial1) >= 1]
+colSums(myofascial2)
+```
+
+```{r}
+contraMyo <- grep('[.].*[.].*',colnames(myofascial2))
+myoContra <- myofascial2[,contraMyo]
+myoBenefit <- myofascial2[,-contraMyo]
+```
+
+We now have the benefits as bigrams and contraindications as trigrams to 
+exclude this as a list of the myofascial therapy contraindications, and to 
+recommend the list of myofascial benefits. We just have to make these column names
+into lists for benefits and contraindications.
+```{r}
+benefits_myofascial <- gsub('[.]',' ', colnames(myoBenefit), perl=TRUE)
+contra_myofascial <- gsub('[.]',' ', colnames(myoContra), perl=TRUE)
+```
+
+We will make the lists of the other 18 categories of massage modalities' benefits and contraindications to use in building our recommender system for massage modalities for each user.
+
+Prenatal Massage
+```{r}
+prenatal <- subset(ngrams23All, ngrams23All$modality=='Prenatal Massage')
+
+prenatal1 <- prenatal[,-c(1:3)]
+prenatal2 <- subset(prenatal1, colSums(prenatal1)!=0)
+
+prenatal2 <- prenatal1[,colSums(prenatal1) >= 1]
+
+contraPre <- grep('[.].*[.].*',colnames(prenatal2))
+PreContra <- prenatal2[,contraPre]
+PreBenefit <- prenatal2[,-contraPre]
+
+benefits_prenatal <- gsub('[.]',' ', colnames(PreBenefit), perl=TRUE)
+contra_prenatal <- gsub('[.]',' ', colnames(PreContra), perl=TRUE)
+
+```
+
+Shiatsu Massage
+```{r}
+shiatsu <- subset(ngrams23All, ngrams23All$modality=='Shiatsu Massage')
+
+shiatsu1 <- shiatsu[,-c(1:3)]
+shiatsu2 <- subset(shiatsu1, colSums(shiatsu1)!=0)
+
+shiatsu2 <- shiatsu1[,colSums(shiatsu1) >= 1]
+
+contrashi <- grep('[.].*[.].*',colnames(shiatsu2))
+shiContra <- shiatsu2[,contrashi]
+shiBenefit <- shiatsu2[,-contrashi]
+
+benefits_shiatsu <- gsub('[.]',' ', colnames(shiBenefit), perl=TRUE)
+contra_shiatsu <- gsub('[.]',' ', colnames(shiContra), perl=TRUE)
+
+```
+
+Hot Stone Therapy Massage
+```{r}
+hotStone <- subset(ngrams23All, ngrams23All$modality=='Hot Stone Therapy Massage')
+
+hotStone1 <- hotStone[,-c(1:3)]
+hotStone2 <- subset(hotStone1, colSums(hotStone1)!=0)
+
+hotStone2 <- hotStone1[,colSums(hotStone1) >= 1]
+
+contrahs <- grep('[.].*[.].*',colnames(hotStone2))
+hsContra <- hotStone2[,contrahs]
+hsBenefit <- hotStone2[,-contrahs]
+
+benefits_hs <- gsub('[.]',' ', colnames(hsBenefit), perl=TRUE)
+contra_hs <- gsub('[.]',' ', colnames(hsContra), perl=TRUE)
+```
+
+Cupping Therapy
+```{r}
+Cupping <- subset(ngrams23All, ngrams23All$modality=='Cupping Therapy')
+
+Cupping1 <- Cupping[,-c(1:3)]
+Cupping2 <- subset(Cupping1, colSums(Cupping1)!=0)
+
+Cupping2 <- Cupping1[,colSums(Cupping1) >= 1]
+
+contracup <- grep('[.].*[.].*',colnames(Cupping2))
+cupContra <- Cupping2[,contracup]
+cupBenefit <- Cupping2[,-contracup]
+
+benefits_cup <- gsub('[.]',' ', colnames(cupBenefit), perl=TRUE)
+contra_cup <- gsub('[.]',' ', colnames(cupContra), perl=TRUE)
+```
+
+Sports Massage
+```{r}
+Sports <- subset(ngrams23All, ngrams23All$modality=='Sports Massage')
+
+Sports1 <- Sports[,-c(1:3)]
+Sports2 <- subset(Sports1, colSums(Sports1)!=0)
+
+Sports2 <- Sports1[,colSums(Sports1) >= 1]
+
+contrasports <- grep('[.].*[.].*',colnames(Sports2))
+sportsContra <- Sports2[,contrasports]
+sportsBenefit <- Sports2[,-contrasports]
+
+benefits_sports <- gsub('[.]',' ', colnames(sportsBenefit), perl=TRUE)
+contra_sports <- gsub('[.]',' ', colnames(sportsContra), perl=TRUE)
+
+```
+
+Biofreeze Muscle Pain Relief Gel
+```{r}
+Freeze <- subset(ngrams23All, ngrams23All$modality=='Biofreeze Muscle Pain Relief Gel')
+
+Freeze1 <- Freeze[,-c(1:3)]
+Freeze2 <- subset(Freeze1, colSums(Freeze1)!=0)
+
+Freeze2 <- Freeze1[,colSums(Freeze1) >= 1]
+
+contrafreeze <- grep('[.].*[.].*',colnames(Freeze2))
+freezeContra <- Freeze2[,contrafreeze]
+freezeBenefit <- Freeze2[,-contrafreeze]
+
+benefits_freeze <- gsub('[.]',' ', colnames(freezeBenefit), perl=TRUE)
+contra_freeze <- gsub('[.]',' ', colnames(freezeContra), perl=TRUE)
+
+```
+
+Cold Stone Therapy
+```{r}
+ColdStone <- subset(ngrams23All, ngrams23All$modality=='Cold Stone Therapy')
+
+ColdStone1 <- ColdStone[,-c(1:3)]
+ColdStone2 <- subset(ColdStone1, colSums(ColdStone1)!=0)
+
+ColdStone2 <- ColdStone1[,colSums(ColdStone1) >= 1]
+
+contracold <- grep('[.].*[.].*',colnames(ColdStone2))
+coldContra <- ColdStone2[,contracold]
+coldBenefit <- ColdStone2[,-contracold]
+
+benefits_cold <- gsub('[.]',' ', colnames(coldBenefit), perl=TRUE)
+contra_cold <- gsub('[.]',' ', colnames(coldContra), perl=TRUE)
+
+```
+
+Stretching
+```{r}
+Stretch <- subset(ngrams23All, ngrams23All$modality=='Stretching')
+
+Stretch1 <- Stretch[,-c(1:3)]
+Stretch2 <- subset(Stretch1, colSums(Stretch1)!=0)
+
+Stretch2 <- Stretch1[,colSums(Stretch1) >= 1]
+
+contrastretch <- grep('[.].*[.].*',colnames(Stretch2))
+stretchContra <- Stretch2[,contrastretch]
+stretchBenefit <- Stretch2[,-contrastretch]
+
+benefits_stretch <- gsub('[.]',' ', colnames(stretchBenefit), perl=TRUE)
+contra_stretch <- gsub('[.]',' ', colnames(stretchContra), perl=TRUE)
+
+```
+
+Aromatherapy
+```{r}
+AromaTherapy <- subset(ngrams23All, ngrams23All$modality=='Aromatherapy')
+
+AromaTherapy1 <- AromaTherapy[,-c(1:3)]
+AromaTherapy2 <- subset(AromaTherapy1, colSums(AromaTherapy1)!=0)
+
+AromaTherapy2 <- AromaTherapy1[,colSums(AromaTherapy1) >= 1]
+
+contraaroma <- grep('[.].*[.].*',colnames(AromaTherapy2))
+aromaContra <- AromaTherapy2[,contraaroma]
+aromaBenefit <- AromaTherapy2[,-contraaroma]
+
+benefits_aroma <- gsub('[.]',' ', colnames(aromaBenefit), perl=TRUE)
+contra_aroma <- gsub('[.]',' ', colnames(aromaContra), perl=TRUE)
+
+```
+
+Swedish Massage
+```{r}
+Swedish <- subset(ngrams23All, ngrams23All$modality=='Swedish Massage')
+
+Swedish1 <- Swedish[,-c(1:3)]
+Swedish2 <- subset(Swedish1, colSums(Swedish1)!=0)
+
+Swedish2 <- Swedish1[,colSums(Swedish1) >= 1]
+
+contraswedish <- grep('[.].*[.].*',colnames(Swedish2))
+swedishContra <- Swedish2[,contraswedish]
+swedishBenefit <- Swedish2[,-contraswedish]
+
+benefits_swedish <- gsub('[.]',' ', colnames(swedishBenefit), perl=TRUE)
+contra_swedish <- gsub('[.]',' ', colnames(swedishContra), perl=TRUE)
+
+```
+
+Deep tissue Massage
+```{r}
+DTmassage <- subset(ngrams23All, ngrams23All$modality=='Deep tissue Massage')
+
+DTmassage1 <- DTmassage[,-c(1:3)]
+DTmassage2 <- subset(DTmassage1, colSums(DTmassage1)!=0)
+
+DTmassage2 <- DTmassage1[,colSums(DTmassage1) >= 1]
+
+contraDT <- grep('[.].*[.].*',colnames(DTmassage2))
+DTContra <- DTmassage2[,contraDT]
+DTBenefit <- DTmassage2[,-contraDT]
+
+benefits_DT <- gsub('[.]',' ', colnames(DTBenefit), perl=TRUE)
+contra_DT <- gsub('[.]',' ', colnames(DTContra), perl=TRUE)
+
+```
+
+Instrument Assisted Soft Tissue Mobilization (IASTM) Friction Massage
+```{r}
+IASTM <- subset(ngrams23All, ngrams23All$modality=='Instrument Assisted Soft Tissue Mobilization (IASTM) Friction Massage')
+
+IASTM1 <- IASTM[,-c(1:3)]
+IASTM2 <- subset(IASTM1, colSums(IASTM1)!=0)
+
+IASTM2 <- IASTM1[,colSums(IASTM1) >= 1]
+
+contrainstrument <- grep('[.].*[.].*',colnames(IASTM2))
+instrumentContra <- IASTM2[,contrainstrument]
+instrumentBenefit <- IASTM2[,-contrainstrument]
+
+benefits_instrument <- gsub('[.]',' ', colnames(instrumentBenefit), perl=TRUE)
+contra_instrument <- gsub('[.]',' ', colnames(instrumentContra), perl=TRUE)
+
+```
+
+Trigger Point Therapy
+```{r}
+TPT <- subset(ngrams23All, ngrams23All$modality=='Trigger Point Therapy')
+
+TPT1 <- TPT[,-c(1:3)]
+TPT2 <- subset(TPT1, colSums(TPT1)!=0)
+
+TPT2 <- TPT1[,colSums(TPT1) >= 1]
+
+contratpt <- grep('[.].*[.].*',colnames(TPT2))
+tptContra <- TPT2[,contratpt]
+tptBenefit <- TPT2[,-contratpt]
+
+benefits_tpt <- gsub('[.]',' ', colnames(tptBenefit), perl=TRUE)
+contra_tpt <- gsub('[.]',' ', colnames(tptContra), perl=TRUE)
+
+```
+
+Massage Gun Therapy
+```{r}
+massageGun <- subset(ngrams23All, ngrams23All$modality=='Massage Gun Therapy')
+
+massageGun1 <- massageGun[,-c(1:3)]
+massageGun2 <- subset(massageGun1, colSums(massageGun1)!=0)
+
+massageGun2 <- massageGun1[,colSums(massageGun1) >= 1]
+
+contramassagegun <- grep('[.].*[.].*',colnames(massageGun2))
+massagegunContra <- massageGun2[,contramassagegun]
+massagegunBenefit <- massageGun2[,-contramassagegun]
+
+benefits_massagegun <- gsub('[.]',' ', colnames(massagegunBenefit), perl=TRUE)
+contra_massagegun <- gsub('[.]',' ', colnames(massagegunContra), perl=TRUE)
+
+```
+
+Lymphatic Drainage Massage
+```{r}
+Lymphatic <- subset(ngrams23All, ngrams23All$modality=='Lymphatic Drainage Massage')
+
+Lymphatic1 <- Lymphatic[,-c(1:3)]
+Lymphatic2 <- subset(Lymphatic1, colSums(Lymphatic1)!=0)
+
+Lymphatic2 <- Lymphatic1[,colSums(Lymphatic1) >= 1]
+
+contralymphatic <- grep('[.].*[.].*',colnames(Lymphatic2))
+lymphaticContra <- Lymphatic2[,contralymphatic]
+lymphaticBenefit <- Lymphatic2[,-contralymphatic]
+
+benefits_lymphatic <- gsub('[.]',' ', colnames(lymphaticBenefit), perl=TRUE)
+contra_lymphatic <- gsub('[.]',' ', colnames(lymphaticContra), perl=TRUE)
+
+```
+
+Reflexology Massage
+```{r}
+Reflexology <- subset(ngrams23All, ngrams23All$modality=='Reflexology Massage')
+
+Reflexology1 <- Reflexology[,-c(1:3)]
+Reflexology2 <- subset(Reflexology1, colSums(Reflexology1)!=0)
+
+Reflexology2 <- Reflexology1[,colSums(Reflexology1) >= 1]
+
+contrareflexology <- grep('[.].*[.].*',colnames(Reflexology2))
+reflexologyContra <- Reflexology2[,contrareflexology]
+reflexologyBenefit <- Reflexology2[,-contrareflexology]
+
+benefits_reflexology <- gsub('[.]',' ', colnames(reflexologyBenefit), perl=TRUE)
+contra_reflexology <- gsub('[.]',' ', colnames(reflexologyContra), perl=TRUE)
+
+```
+
+Craniosacral Massage
+```{r}
+Craniosacral <- subset(ngrams23All, ngrams23All$modality=='Craniosacral Massage')
+
+Craniosacral1 <- Craniosacral[,-c(1:3)]
+Craniosacral2 <- subset(Craniosacral1, colSums(Craniosacral1)!=0)
+
+Craniosacral2 <- Craniosacral1[,colSums(Craniosacral1) >= 1]
+
+contracraniosacral <- grep('[.].*[.].*',colnames(Craniosacral2))
+craniosacralContra <- Craniosacral2[,contracraniosacral]
+craniosacralBenefit <- Craniosacral2[,-contracraniosacral]
+
+benefits_craniosacral <- gsub('[.]',' ', colnames(craniosacralBenefit), perl=TRUE)
+contra_craniosacral <- gsub('[.]',' ', colnames(craniosacralContra), perl=TRUE)
+
+```
+
+Cannabidiol (CBD) Massage Balm
+```{r}
+CBD <- subset(ngrams23All, ngrams23All$modality=='Cannabidiol (CBD) Massage Balm')
+
+CBD1 <- CBD[,-c(1:3)]
+CBD2 <- subset(CBD1, colSums(CBD1)!=0)
+
+CBD2 <- CBD1[,colSums(CBD1) >= 1]
+
+contracbd <- grep('[.].*[.].*',colnames(CBD2))
+cbdContra <- CBD2[,contracbd]
+cbdBenefit <- CBD2[,-contracbd]
+
+benefits_cbd <- gsub('[.]',' ', colnames(cbdBenefit), perl=TRUE)
+contra_cbd <- gsub('[.]',' ', colnames(cbdContra), perl=TRUE)
+
+```
+
+Benefits of each modality as lists:
+benefits_cbd,benefits_craniosacral,benefits_reflexology,benefits_lymphatic,benefits_massagegun,benefits_tpt,benefits_instrument,benefits_DT,benefits_swedish,benefits_aroma,benefits_stretch,benefits_cold,benefits_freeze,benefits_sports,benefits_cup,benefits_hs,benefits_shiatsu,benefits_prenatal,benefits_myofascial
+
+Contraindications of each modality as lists:
+contra_cbd,contra_craniosacral,contra_reflexology,contra_lymphatic,contra_massagegun,contra_tpt,contra_instrument,contra_DT,contra_swedish,contra_aroma,contra_stretch,contra_cold,contra_freeze,
+contra_sports,contra_cup,contra_hs,contra_shiatsu,contra_prenatal,contra_myofascial
+
+```{r}
+benefits_cbd
+contra_cbd
+```
 

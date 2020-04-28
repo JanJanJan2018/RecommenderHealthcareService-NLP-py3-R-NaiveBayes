@@ -1,0 +1,627 @@
+---
+title: "Massage Modality Recommender System"
+author: "Janis Corona"
+date: "4/27/2020"
+output: html_document
+---
+
+This script uses 19 classes of massage therapy to recommend a massage for a client after excluding all other massage modalities based on the contraindications for each massage modality and benefit of each massage modality needed.
+
+- [Random Forest Trees user input generated results](#random-forest-trees-user-input-generated-results)
+
+- [Gradient Boosted Trees user input generated results](#gradient-boosted-trees-user-input-generated-results)
+
+```{r}
+modes <- read.csv('MassageModalities2.csv', sep=',', header=TRUE, na.strings=c('',' ','NA'))
+colnames(modes)[1] <- 'modality'
+head(modes)
+```
+
+Lets use python 3 to tokenize the contraindications into three adjacent word pairs, and to tokenize the the benefits into two adjacent word pairs using the ngrams tokenization method.
+```{r}
+library(reticulate)
+```
+
+```{r}
+conda_list(conda = "auto") 
+
+```
+
+
+```{r}
+use_condaenv(condaenv = "python36")
+
+```
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+import pandas as pd 
+import matplotlib.pyplot as plt 
+from textblob import TextBlob 
+import sklearn 
+import numpy as np 
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer 
+from sklearn.naive_bayes import MultinomialNB 
+from sklearn.metrics import classification_report, f1_score, accuracy_score, confusion_matrix 
+
+import re
+import string
+import nltk 
+
+np.random.seed(47) 
+```
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+modes = pd.read_csv('MassageModalities2.csv', encoding = 'unicode_escape') 
+print(modes.head())
+print(modes.columns)
+```
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+print(modes['modality'].unique())
+```
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+import numpy as np
+
+modes = modes.reindex(np.random.permutation(modes.index))
+
+print(modes.head())
+print(modes.tail())
+```
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+modes.groupby('modality').describe()
+```
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+stopwords = nltk.corpus.stopwords.words('english')
+ps=nltk.PorterStemmer()
+wn=nltk.WordNetLemmatizer()
+```
+
+
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+def lemmatize(text):
+    text="".join([word.lower() for word in text if word not in string.punctuation])
+    tokens=re.split('\W+', text)
+    text=" ".join([wn.lemmatize(word) for word in tokens if word not in stopwords])#unlisted with N-grams vectorization
+    #text=[wn.lemmatize(word) for word in tokens if word not in stopwords]#when using count Vectorization its a list
+    #or else single letters returned.
+    return text
+```
+
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+modes['lemmatizedBenefits']=modes['benefits'].apply(lambda x: lemmatize(x))
+modes['lemmatizedContraindications']=modes['contraindications'].apply(lambda x: lemmatize(x))
+
+```
+
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+modes.columns
+```
+
+
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+modes.head()
+```
+
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+from sklearn.model_selection import train_test_split
+
+X_train,X_test,y_train,y_test=train_test_split(modes[['lemmatizedContraindications','lemmatizedBenefits']],modes['modality'],test_size=0.15)
+
+```
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+X_train.head()
+```
+
+
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+from sklearn.feature_extraction.text import CountVectorizer
+```
+
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+n_gram3_vect=CountVectorizer(ngram_range=(3,3))
+n_gram2_vect=CountVectorizer(ngram_range=(2,2))
+
+```
+
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+type(X_train['lemmatizedBenefits'])
+X_train['lemmatizedBenefits'].head()
+```
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+type(X_train['lemmatizedContraindications'])
+X_train['lemmatizedContraindications'].head()
+```
+
+
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+n_gram3_vect_fit=n_gram3_vect.fit(X_train['lemmatizedContraindications'])
+n_gram2_vect_fit=n_gram2_vect.fit(X_train['lemmatizedBenefits'])
+
+
+n_gram3_train=n_gram3_vect_fit.transform(X_train['lemmatizedContraindications'])
+n_gram3_test=n_gram3_vect_fit.transform(X_test['lemmatizedContraindications'])
+n_gram2_train=n_gram2_vect_fit.transform(X_train['lemmatizedBenefits'])
+n_gram2_test=n_gram2_vect_fit.transform(X_test['lemmatizedBenefits'])
+
+```
+
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+print(len(n_gram3_vect_fit.get_feature_names()))
+Ngram3 = n_gram3_vect_fit.get_feature_names()
+print(Ngram3)
+```
+
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+print(len(n_gram2_vect_fit.get_feature_names()))
+Ngram2 = n_gram2_vect_fit.get_feature_names()
+print(type(Ngram2))
+print(Ngram2)
+
+```
+
+```{python}
+n_gram3_train_df=pd.concat([X_train[['lemmatizedContraindications','lemmatizedBenefits']].reset_index(drop=True),pd.DataFrame(n_gram3_train.toarray())],axis=1)
+
+n_gram3_test_df=pd.concat([X_test[['lemmatizedContraindications','lemmatizedBenefits']].reset_index(drop=True),pd.DataFrame(n_gram3_test.toarray())],axis=1)
+
+```
+
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+n_gram3_train_df.head()
+```
+
+
+```{python}
+n_gram2_train_df=pd.concat([X_train[['lemmatizedContraindications','lemmatizedBenefits']].reset_index(drop=True),pd.DataFrame(n_gram2_train.toarray())],axis=1)
+
+n_gram2_test_df=pd.concat([X_test[['lemmatizedContraindications','lemmatizedBenefits']].reset_index(drop=True),pd.DataFrame(n_gram2_test.toarray())],axis=1)
+
+```
+
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+n_gram2_train_df.head()
+
+```
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+
+n_gram2_train2=pd.DataFrame(n_gram2_train.toarray())
+n_gram3_train3=pd.DataFrame(n_gram3_train.toarray())
+n_gram2_test2=pd.DataFrame(n_gram2_test.toarray())
+n_gram3_test3=pd.DataFrame(n_gram3_test.toarray())
+
+n_gram3_train3.columns=Ngram3
+n_gram2_train2.columns=Ngram2
+n_gram3_test3.columns=Ngram3
+n_gram2_test2.columns=Ngram2
+
+
+n_gram_2_3_train_df=pd.concat([X_train[['lemmatizedContraindications','lemmatizedBenefits']].reset_index(drop=True),n_gram2_train2,n_gram3_train3],axis=1)
+
+n_gram_2_3_test_df=pd.concat([X_test[['lemmatizedContraindications','lemmatizedBenefits']].reset_index(drop=True),n_gram2_test2,n_gram3_test3],axis=1)
+
+```
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+ngram23Train = pd.concat([n_gram2_train2,n_gram3_train3],axis=1)
+ngram23Test = pd.concat([n_gram2_test2,n_gram3_test3],axis=1)
+ngram23Train.head()
+```
+
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+n_gram_2_3_train_df.head()
+```
+
+Write this table of ngram tokens out to csv.
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+n_gram_2_3_test_df.to_csv('ngrams2_3_test.csv',index=False)
+n_gram_2_3_train_df.to_csv('ngrams2_3_train.csv', index=False)
+y_train.to_csv('y_train_ngrams23.csv', index=False)
+y_test.to_csv('y_test_ngrams23.csv', index=False)
+```
+
+Lets read in this large file in RStudio, and combine the data into one table.
+```{r}
+ngrams23train <- read.csv('ngrams2_3_train.csv', sep=',', header=TRUE, 
+                          na.strings=c('',' ','NA'))
+ngrams23test <- read.csv('ngrams2_3_test.csv', sep=',', header=TRUE,
+                         na.strings=c('',' ','NA'))
+ytrain <- read.csv('y_train_ngrams23.csv', sep=',', header=FALSE,
+                   na.strings=c('',' ','NA'))
+colnames(ytrain) <- 'modality'
+ytest <- read.csv('y_test_ngrams23.csv', sep=',', header=FALSE,
+                  na.strings=c('',' ','NA'))
+colnames(ytest) <- 'modality'
+
+train <- cbind(ytrain,ngrams23train)
+test <- cbind(ytest,ngrams23test)
+
+ngrams23All <- rbind(train,test)
+
+write.csv(ngrams23All,'lemmNgramsBenefits2Contraindications3.csv', row.names=FALSE)
+```
+
+We now have the lemmatized ngram tokens of 2 adjacent word pairs for our benefits and three adjacent word pairs for our contraindications saved to csv to use later or as needed for building our recommender system for a specific massage modality.
+
+Lets get back to python, for machine learning using our previous models for the random forest classifier and the gradient boosted trees classifier. Lets use the combined tokens for the benefits and contraindications to see how well these trees do in classifying our massage modalities.
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.metrics import precision_recall_fscore_support as score
+import time
+```
+
+
+```{python}
+rf=RandomForestClassifier(n_estimators=150, max_depth=None, n_jobs=-1)
+start=time.time()
+rf_model=rf.fit(ngram23Train,y_train)
+end=time.time()
+fit_time=(end-start)
+fit_time
+```
+
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+start=time.time()
+y_pred=rf_model.predict(ngram23Test)
+end=time.time()
+pred_time=(end-start)
+pred_time
+```
+
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+
+prd = pd.DataFrame(y_pred)
+prd.columns=['Predicted']
+
+prd.index=y_test.index
+pred=pd.concat([pd.DataFrame(prd),y_test],axis=1)
+print(pred)
+
+```
+
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+from sklearn.metrics import classification_report, f1_score, accuracy_score, confusion_matrix 
+
+print('accuracy', accuracy_score(y_test, y_pred))
+print('confusion matrix\n', confusion_matrix(y_test, y_pred))
+print('(row=expected, col=predicted)')
+
+print(classification_report(y_test, y_pred))
+```
+
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+gb=GradientBoostingClassifier(n_estimators=150,max_depth=11)
+start=time.time()
+gb_model=gb.fit(ngram23Train,y_train)
+end=time.time()
+fit_time=(end-start)
+fit_time
+```
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+start=time.time()
+y_pred=gb_model.predict(ngram23Test)
+end=time.time()
+pred_time=(end-start)
+pred_time
+```
+
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+prd = pd.DataFrame(y_pred)
+prd.columns=['Predicted']
+
+prd.index=y_test.index
+pred=pd.concat([pd.DataFrame(prd),y_test],axis=1)
+print(pred)
+```
+
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+from sklearn.metrics import classification_report, f1_score, accuracy_score, confusion_matrix 
+
+print('accuracy', accuracy_score(y_test, y_pred))
+print('confusion matrix\n', confusion_matrix(y_test, y_pred))
+print('(row=expected, col=predicted)')
+
+print(classification_report(y_test, y_pred))
+```
+
+It is great that these two produced the same results of 100%, as they should because each class of modality is a duplicate up to 23 duplicates, or 24 samples of each modality that are all identical. I ran a previous script on the same data and used 1-4 ngrams and the hot stone therapy observations were all getting misclassified as deep tissue recommendations for benefits and the same for contraindications of each type.
+
+Lets try user inputs using this data after we make the above into a function for both models.
+```{python}
+
+def lemmatize(text):
+    text="".join([word.lower() for word in text if word not in string.punctuation])
+    tokens=re.split('\W+', text)
+    text=" ".join([wn.lemmatize(word) for word in tokens if word not in stopwords])
+    return text
+    
+def predict_ngramRFC_lemma(new_review): 
+    nr=pd.DataFrame([new_review])
+    nr.columns=['newReview']
+    nr['lemma']=nr['newReview'].apply(lambda x: lemmatize(x))
+    
+    rf=RandomForestClassifier(n_estimators=150, max_depth=None, n_jobs=-1)
+    n_gram2_vect=CountVectorizer(ngram_range=(2,2))
+    n_gram3_vect=CountVectorizer(ngram_range=(3,3))
+
+
+    n_gram2_vect_fit=n_gram2_vect.fit(X_train['lemmatizedBenefits'])
+    n_gram3_vect_fit=n_gram3_vect.fit(X_train['lemmatizedContraindications'])
+
+
+    n_gram2_train=n_gram2_vect_fit.transform(X_train['lemmatizedBenefits'])
+    n_gram3_train=n_gram3_vect_fit.transform(X_train['lemmatizedContraindications'])
+
+    Ngram2 = n_gram2_vect_fit.get_feature_names()
+    Ngram3 = n_gram3_vect_fit.get_feature_names()
+
+    n_gram2_train2=pd.DataFrame(n_gram2_train.toarray())
+    n_gram3_train3=pd.DataFrame(n_gram3_train.toarray())
+
+    n_gram2_train2.columns=Ngram2
+    n_gram3_train3.columns=Ngram3
+
+    ngram23Train = pd.concat([n_gram2_train2,n_gram3_train3],axis=1)
+
+    nr_gram2_test=n_gram2_vect_fit.transform(nr['lemma'])
+    nr_gram3_test=n_gram3_vect_fit.transform(nr['lemma'])
+   
+    nr_test2=pd.DataFrame(nr_gram2_test.toarray())
+    nr_test3=pd.DataFrame(nr_gram3_test.toarray())
+    
+    nr_test2.columns=Ngram2
+    nr_test3.columns=Ngram3
+
+    nrTest = pd.concat([nr_test2,nr_test3],axis=1)
+    
+    model = rf.fit(ngram23Train,y_train)
+    pred=pd.DataFrame(model.predict(nrTest))
+    pred.columns=['Recommended Healthcare Service:']
+    pred.index= ['lemmatized_2ngram3_RFC_85-15:']
+    print('\n\n',pred)
+```
+
+```{python} 
+np.random.seed(12345)
+predict_ngramRFC_lemma('I need a massage!') 
+```
+
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+np.random.seed(12345)
+
+predict_ngramRFC_lemma('I have been working out a lot more than normal and am sore all over. Feels like a car hit me. I can\'t touch my toes to tie my shoes and my neck won\'t turn to the right. Help me.')
+
+```
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+
+def lemmatize(text):
+    text="".join([word.lower() for word in text if word not in string.punctuation])
+    tokens=re.split('\W+', text)
+    text=" ".join([wn.lemmatize(word) for word in tokens if word not in stopwords])
+    return text
+    
+
+def predict_ngramGBC_lemma(new_review): 
+    nr=pd.DataFrame([new_review])
+    nr.columns=['newReview']
+    nr['lemma']=nr['newReview'].apply(lambda x: lemmatize(x))
+
+    gb=GradientBoostingClassifier(n_estimators=150,max_depth=11)
+    n_gram2_vect=CountVectorizer(ngram_range=(2,2))
+    n_gram3_vect=CountVectorizer(ngram_range=(3,3))
+
+
+    n_gram2_vect_fit=n_gram2_vect.fit(X_train['lemmatizedBenefits'])
+    n_gram3_vect_fit=n_gram3_vect.fit(X_train['lemmatizedContraindications'])
+
+
+    n_gram2_train=n_gram2_vect_fit.transform(X_train['lemmatizedBenefits'])
+    n_gram3_train=n_gram3_vect_fit.transform(X_train['lemmatizedContraindications'])
+
+    Ngram2 = n_gram2_vect_fit.get_feature_names()
+    Ngram3 = n_gram3_vect_fit.get_feature_names()
+
+    n_gram2_train2=pd.DataFrame(n_gram2_train.toarray())
+    n_gram3_train3=pd.DataFrame(n_gram3_train.toarray())
+
+    n_gram2_train2.columns=Ngram2
+    n_gram3_train3.columns=Ngram3
+
+
+    ngram23Train = pd.concat([n_gram2_train2,n_gram3_train3],axis=1)
+
+    nr_gram2_test=n_gram2_vect_fit.transform(nr['lemma'])
+    nr_gram3_test=n_gram3_vect_fit.transform(nr['lemma'])
+   
+    nr_test2=pd.DataFrame(nr_gram2_test.toarray())
+    nr_test3=pd.DataFrame(nr_gram3_test.toarray())
+    
+    nr_test2.columns=Ngram2
+    nr_test3.columns=Ngram3
+
+    nrTest = pd.concat([nr_test2,nr_test3],axis=1)
+
+    model = gb.fit(ngram23Train,y_train)
+    pred=pd.DataFrame(model.predict(nrTest))
+    pred.columns=['Recommended Healthcare Service:']
+    pred.index= ['lemmatized_2ngram3_GBC_85-15:']
+    print('\n\n',pred)
+```
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}    
+np.random.seed(12345)
+
+predict_ngramGBC_lemma('I need a massage!')
+```
+
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+np.random.seed(12345)
+
+predict_ngramGBC_lemma('I have been working out a lot more than normal and am sore all over. Feels like a car hit me. I can\'t touch my toes to tie my shoes and my neck won\'t turn to the right. Help me.')
+
+```
+
+That was pretty interesting, to see the different recommendations. Since many of the contraindications and benefits are the same between modalities, these simple user inputs produced the same results with the seed set. If I remove the seed or starting point to randomize within the operating system, then lets see how this knits.
+
+
+# Gradient Boosted Trees user input generated results
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}    
+predict_ngramGBC_lemma('I need a massage!')
+```
+
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}    
+predict_ngramGBC_lemma('I need a massage!')
+```
+
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}    
+predict_ngramGBC_lemma('I need a massage!')
+```
+
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}    
+predict_ngramGBC_lemma('I need a massage!')
+```
+
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}    
+predict_ngramGBC_lemma('I need a massage!')
+```
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+predict_ngramGBC_lemma('I have been working out a lot more than normal and am sore all over. Feels like a car hit me. I can\'t touch my toes to tie my shoes and my neck won\'t turn to the right. Help me.')
+
+```
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+predict_ngramGBC_lemma('I have been working out a lot more than normal and am sore all over. Feels like a car hit me. I can\'t touch my toes to tie my shoes and my neck won\'t turn to the right. Help me.')
+
+```
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+predict_ngramGBC_lemma('I have been working out a lot more than normal and am sore all over. Feels like a car hit me. I can\'t touch my toes to tie my shoes and my neck won\'t turn to the right. Help me.')
+
+```
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+predict_ngramGBC_lemma('I have been working out a lot more than normal and am sore all over. Feels like a car hit me. I can\'t touch my toes to tie my shoes and my neck won\'t turn to the right. Help me.')
+
+```
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+predict_ngramGBC_lemma('I have been working out a lot more than normal and am sore all over. Feels like a car hit me. I can\'t touch my toes to tie my shoes and my neck won\'t turn to the right. Help me.')
+
+```
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+predict_ngramGBC_lemma('I have been working out a lot more than normal and am sore all over. Feels like a car hit me. I can\'t touch my toes to tie my shoes and my neck won\'t turn to the right. Help me.')
+
+```
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+predict_ngramGBC_lemma('I have been working out a lot more than normal and am sore all over. Feels like a car hit me. I can\'t touch my toes to tie my shoes and my neck won\'t turn to the right. Help me.')
+
+```
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+predict_ngramGBC_lemma('I have been working out a lot more than normal and am sore all over. Feels like a car hit me. I can\'t touch my toes to tie my shoes and my neck won\'t turn to the right. Help me.')
+
+```
+
+# Random Forest Trees user input generated results
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}    
+predict_ngramRFC_lemma('I need a massage!')
+```
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}    
+predict_ngramRFC_lemma('I need a massage!')
+```
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}    
+predict_ngramRFC_lemma('I need a massage!')
+```
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}    
+predict_ngramRFC_lemma('I need a massage!')
+```
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}    
+predict_ngramRFC_lemma('I need a massage!')
+```
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}    
+predict_ngramRFC_lemma('I need a massage!')
+```
+
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+predict_ngramRFC_lemma('I have been working out a lot more than normal and am sore all over. Feels like a car hit me. I can\'t touch my toes to tie my shoes and my neck won\'t turn to the right. Help me.')
+
+```
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+predict_ngramRFC_lemma('I have been working out a lot more than normal and am sore all over. Feels like a car hit me. I can\'t touch my toes to tie my shoes and my neck won\'t turn to the right. Help me.')
+
+```
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+predict_ngramRFC_lemma('I have been working out a lot more than normal and am sore all over. Feels like a car hit me. I can\'t touch my toes to tie my shoes and my neck won\'t turn to the right. Help me.')
+
+```
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+predict_ngramRFC_lemma('I have been working out a lot more than normal and am sore all over. Feels like a car hit me. I can\'t touch my toes to tie my shoes and my neck won\'t turn to the right. Help me.')
+
+```
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+predict_ngramRFC_lemma('I have been working out a lot more than normal and am sore all over. Feels like a car hit me. I can\'t touch my toes to tie my shoes and my neck won\'t turn to the right. Help me.')
+
+```
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+predict_ngramRFC_lemma('I have been working out a lot more than normal and am sore all over. Feels like a car hit me. I can\'t touch my toes to tie my shoes and my neck won\'t turn to the right. Help me.')
+
+```
+
+
+Wonderful! But now lets try to get some of the modalities other than CBD, biofreeze, aromatherapy, stretching, and lymphatic drainage massage. Those are more additional therapeutics for massage therapy.
+
+```{python,error=FALSE,message=FALSE,warning=FALSE,FutureWarning=FALSE}
+predict_ngramGBC_lemma('I want either a Swedish or Deep Tissue massage, I want a lot of pressure, and need to fall asleep, I workout, have stress at work, alright with some hot stones or cold stones, or added cups.')
+
+```
+
+Our next model will use ngrams on the modality description to better capture the tokenized words for each modality, and keep the bigrams on benefits and trigrams on contraindications.
+

@@ -20,6 +20,12 @@ head(modes)
 Lets use python 3 to tokenize the contraindications into three adjacent word pairs, and to tokenize the the benefits into two adjacent word pairs using the ngrams tokenization method.
 ```{r}
 library(reticulate)
+library(dplyr)
+library(stringr)
+library(tm)
+library(textstem)
+library(tidytext)
+library(tidyverse)
 ```
 
 ```{r}
@@ -1008,5 +1014,747 @@ contra_cbd
 
 The above demonstrates the benefits of CBD as a list of double word pairs or bigrams with the stop words stripped, and the bottom list is the longer list of trigrams of three word groups for the contraindications for CBD with the stopwords stripped. What we now want is a way to get the user the have a user input that will scan the list of contraindications for each massage modality, and if it is in the list of a modality, then it will be excluded from the list of available massage modalities for the user. 
 
-Looking at the above list the contraindications are grouped together that are different health conditions like psychosis (and) numbness (in the) limb. Users don't want to scan a list of 500 health conditions or even more than 10, but any health conditions they have will have to be reported before scheduling a massage so that it isn't cancelled or booked for the wrong modality. Lets assume the user honestly includes every possible health condition and history of their health conditions for serious medical conditions, then we want this program to scan those groups of words and find the modalities the user absolutely should not have, so that a list of available massage modalities are provided for the user to select the best one for benefits.
+Looking at the above list the contraindications are grouped together that are different health conditions like psychosis (and) numbness (in the) limb. Users don't want to scan a list of 500 health conditions or even more than 10, but any health conditions they have will have to be reported before scheduling a massage so that it isn't cancelled or booked for the wrong modality. Lets assume the user honestly includes every possible health condition and history of their health conditions for serious medical conditions, then we want this program to scan those groups of words and find the modalities the user absolutely should not have, so that a list of available massage modalities are provided for the user to select the best one for benefits.Some users might not spell the same words or use the same words to describe the same sort of health condition. Like psychosis, I caught my own spelling error as pyschosis and fixed it. Also, the mental disorder or psychosis wouldn't be a health condition one's self would put down, only someone scheduling the massage for the person, like a child of a dementia patient, or parent, for similar mental disorders. There are quite a bit of those, and no massage therapist wants to put their professional or livelihood on the line to massage someone with mental disorders if the client will have a break down in session of some sort, like a relapse or yelling, or similar actions people aren't capable of dealing with on a professional level. Massage therapists are not mental healthcare workers, but the massage does produce benefits that improve mental functions, therefore they cannot handle a client having a break down or threatening their safety if it occurs. So it is best to have these types of health conditions resolved or alerted to, so that a bystander for the client with a mental disorder can be nearby to handle the situation should it occur, or wait until the mental health has improved for the client before scheduling a massage. Lets not compete with God here, lest he or she put us in a comatose state and be like, 'oh you know my thoughts and any of my children's thoughts, well see how you produce machine learning on thoughts now, but, etc.' So, we will not manually scan these words in the list and pick them out, but lets perhaps take that same user input off our trigrams from our model built on contrainidcations, and assume that we can select any bigram word pairs from these trigrams and then add any modality the user input pulls up into a list of modalities to exclude. Some will not be good bigrams, like 'disease pyschosis' but others like 'autoimmune disease' are good bigrams for reported health conditions. Because someone with autoimmune disease will not want a painful and debillitating flare up if a massage modality activated those symptoms, and the client came to realize that he or she did not report it beforehand. Other words like,pregnant, fever, and rash would be best as unigrams. So we should create an ngram of unigrams and bigrams from each list of contraindications. 
+
+We can use string literals and list apply methods to extract these uni and bi gram word pairs from our trigrams of contraindications.
+```{r}
+cbd_split <- strsplit(contra_cbd,split=' ')
+cbd_split1 <- lapply(cbd_split, '[',1)
+cbd_split1b <- as.character(cbd_split1)
+cbd_split1b
+cat('\n','\n')
+
+cbd_split2 <- lapply(cbd_split, '[',2)
+cbd_split2b <- as.character(cbd_split2)
+cbd_split2b
+cat('\n','\n')
+
+cbd_split3 <- lapply(cbd_split, '[',3)
+cbd_split3b <- as.character(cbd_split3)
+cbd_split3b
+cat('\n','\n')
+
+```
+
+Above is our list of unigrams for CBD contraindications. Lets get the bigrams.
+```{r}
+cbd_bi1 <- paste(cbd_split1b,cbd_split2b)
+cbd_bi1
+cat('\n\n')
+
+cbd_bi2 <- paste(cbd_split2b,cbd_split3b)
+cbd_bi2
+cat('\n\n')
+
+cbd_bi3 <- paste(cbd_split3b,cbd_split1b)
+cbd_bi3
+cat('\n\n')
+
+
+```
+
+The following is a list of all the unique unigrams in the CBD contraindication trigrams.
+```{r}
+uni_cbd <- unique(c(cbd_split1b, cbd_split2b, cbd_split3b))
+uni_cbd
+```
+
+The following is a list of all the unique bigrams of the CBD contraindications trigrams.
+```{r}
+bi_cbd <- unique(c(cbd_bi1, cbd_bi2, cbd_bi3))
+bi_cbd
+```
+
+The trigrams are already uniquely identified, because they were column names, and only unique column names can be used but also they were the trigrams that had count values out of all contraindications within the massage modalities' contraindications, for this modality.
+
+So, we will combine this as the list of 1-3 ngrams for our CBD contraindications.
+```{r}
+CBD_contraindications <- c(contra_cbd, bi_cbd, uni_cbd)
+CBD_contraindications
+```
+
+Looking at the list above, it is clear that if any of these unigrams are in a user input, then the modality will get excluded. We won't want this to occur, because somebody using dialogue consisting of 'pain' or 'could' would not get any recommendations for massage. And, also, you might be wondering why not do this earlier when pulling the ngrams and setting to (1,3), but recall this is a list of trigrams for contraindications and a list of bigrams for benefits that were put together in the table, and when using regex to pull the bigrams from the trigrams, we were able to separate the bigrams with one '[.]' and the trigrams with two '[.]'.
+
+We can do the similar with the benefits of CBD list of bigrams to create the unigrams to combine with the bigrams for CBD benefits, then pull out the unigrams in common between the two and favor those single words or unigrams as benefits. Same for the bigrams in common, we will pull those out to assign them to benefits. A possible problem is that the bigram could be a contraindication and the same for the unigrams. We will examine that after building those lists.
+
+Lets get the unigrams of benefits of CBD.
+```{r}
+benefit_uni <- strsplit(benefits_cbd, split=" ")
+benefit_uni1 <- lapply(benefit_uni,'[',1)
+benefit_uni1b <- as.character(benefit_uni1)
+benefit_uni2 <- lapply(benefit_uni,'[',2)
+benefit_uni2b <- as.character(benefit_uni2)
+
+uni_benefits <- unique(c(benefit_uni1b,benefit_uni2b))
+
+benefits_cbd1 <- c(uni_benefits, benefits_cbd)
+benefits_cbd1
+```
+
+Lets now get the list of tokens in both benefits and contraindications.
+
+```{r}
+both_cbd <- CBD_contraindications %in% benefits_cbd1
+length(both_cbd)
+both_cbd
+```
+
+```{r}
+cbd1 <- CBD_contraindications[both_cbd]
+length(cbd1)
+cbd1
+```
+
+The above words are included in both the benefits of CBD and the contraindications of CBD. So, judging from the three words, 'nerve pain', 'nerve', and 'pain,' we will exclude these as markers for contraindications for CBD oil during massage, as they are more likely benefits.
+
+```{r}
+CBD_contraindications1 <- CBD_contraindications[both_cbd==FALSE]
+length(CBD_contraindications1)
+CBD_contraindications1
+```
+
+We could create a data table of the benefits of each modality, the contraindications, and/or both tokens to pull from or keep them as lists to pull from within our program. But not only do we already have those tables, because we made our 19 modality subsets from them, but we would have to merge each one to the other or join creating Nulls. So we will keep them as lists that have been filtered to be better than the orignal lists that removed as much ambiguity as possible between benefits and contraindications. So, now we will create these filtered lists for the other 18 modalities. 
+
+As an aside, who here has watched the reintroduced film on Amazon Prime from 2008, 'Rainman Twins-..Savante autistics Kay and...'? I don't remember the name, but easily Googled. I paid $2.99 to watch it yesterday thinking it was new, but only to me. Sometimes, just like neural networkds old stuff isn't good at that time, but can be re-introduced 10-30 years later for its benefits. The point is, if you did watch this, and if you know the back story of neural networks, you will find that those twins were savante autistics who could recall on the spot with no more than one second to recall the day of the week of any date, the food they ate, the clothes worn, etc. and were viewed and harassed as 'retards' until the film came out with Dustin HOffman praising and encouraging savante's to be found and appreciated. They needed to have routine, and marked all the bells, buzzards, and host clothings during every episode of the 100,000 Pyramid show, and went calmly nuts when it ended. If they were to do the following, they could be of better use. We are going to do just that, and think to ourselves how those twins could have been put to better work. So as we build our next filtered lists of the remaining 18 benefits and contraindications for each modality. We will also be thinking about how we are going to build this program.
+
+***
+
+benefits_craniosacral,contra_craniosacral
+```{r}
+cranio_split <- strsplit(contra_craniosacral,split=' ')
+cranio_split1 <- lapply(cranio_split, '[',1)
+cranio_split1b <- as.character(cranio_split1)
+cranio_split2 <- lapply(cranio_split, '[',2)
+cranio_split2b <- as.character(cranio_split2)
+cranio_split3 <- lapply(cranio_split, '[',3)
+cranio_split3b <- as.character(cranio_split3)
+cranio_bi1 <- paste(cranio_split1b,cranio_split2b)
+cranio_bi2 <- paste(cranio_split2b,cranio_split3b)
+cranio_bi3 <- paste(cranio_split3b,cranio_split1b)
+uni_cranio <- unique(c(cranio_split1b, cranio_split2b, cranio_split3b))
+bi_cranio <- unique(c(cranio_bi1, cranio_bi2, cranio_bi3))
+Cranio_contraindications <- c(contra_craniosacral, bi_cranio, uni_cranio)
+csbenefit_uni <- strsplit(benefits_craniosacral, split=" ")
+csbenefit_uni1 <- lapply(csbenefit_uni,'[',1)
+csbenefit_uni1b <- as.character(csbenefit_uni1)
+csbenefit_uni2 <- lapply(csbenefit_uni,'[',2)
+csbenefit_uni2b <- as.character(csbenefit_uni2)
+csuni_benefits <- unique(c(csbenefit_uni1b,csbenefit_uni2b))
+benefits_cranio1 <- c(csuni_benefits, benefits_craniosacral) #
+
+both_cranio <- Cranio_contraindications %in% benefits_cranio1
+cranio1 <- Cranio_contraindications[both_cranio] #
+Cranio_contraindications1 <- Cranio_contraindications[both_cranio==FALSE] #
+
+```
+
+benefits_reflexology,contra_reflexology
+```{r}
+reflex_split <- strsplit(contra_reflexology,split=' ')
+reflex_split1 <- lapply(reflex_split, '[',1)
+reflex_split1b <- as.character(reflex_split1)
+reflex_split2 <- lapply(reflex_split, '[',2)
+reflex_split2b <- as.character(reflex_split2)
+reflex_split3 <- lapply(reflex_split, '[',3)
+reflex_split3b <- as.character(reflex_split3)
+reflex_bi1 <- paste(reflex_split1b,reflex_split2b)
+reflex_bi2 <- paste(reflex_split2b,reflex_split3b)
+reflex_bi3 <- paste(reflex_split3b,reflex_split1b)
+uni_reflex <- unique(c(reflex_split1b, reflex_split2b, reflex_split3b))
+bi_reflex <- unique(c(reflex_bi1, reflex_bi2, reflex_bi3))
+Reflex_contraindications <- c(contra_reflexology, bi_reflex, uni_reflex)
+rfxbenefit_uni <- strsplit(benefits_reflexology, split=" ")
+rfxbenefit_uni1 <- lapply(rfxbenefit_uni,'[',1)
+rfxbenefit_uni1b <- as.character(rfxbenefit_uni1)
+rfxbenefit_uni2 <- lapply(rfxbenefit_uni,'[',2)
+rfxbenefit_uni2b <- as.character(rfxbenefit_uni2)
+rfxuni_benefits <- unique(c(rfxbenefit_uni1b,rfxbenefit_uni2b))
+benefits_reflex1 <- c(rfxuni_benefits, benefits_reflexology) #
+
+both_reflex <- Reflex_contraindications %in% benefits_reflex1
+reflex1 <- Reflex_contraindications[both_reflex] #
+Reflex_contraindications1 <- Reflex_contraindications[both_reflex==FALSE] #
+
+
+```
+
+benefits_lymphatic, contra_lymphatic
+```{r}
+lymph_split <- strsplit(contra_lymphatic,split=' ')
+lymph_split1 <- lapply(lymph_split, '[',1)
+lymph_split1b <- as.character(lymph_split1)
+lymph_split2 <- lapply(lymph_split, '[',2)
+lymph_split2b <- as.character(lymph_split2)
+lymph_split3 <- lapply(lymph_split, '[',3)
+lymph_split3b <- as.character(lymph_split3)
+lymph_bi1 <- paste(lymph_split1b,lymph_split2b)
+lymph_bi2 <- paste(lymph_split2b,lymph_split3b)
+lymph_bi3 <- paste(lymph_split3b,lymph_split1b)
+uni_lymph <- unique(c(lymph_split1b, lymph_split2b, lymph_split3b))
+bi_lymph <- unique(c(lymph_bi1, lymph_bi2, lymph_bi3))
+Lymph_contraindications <- c(contra_lymphatic, bi_lymph, uni_lymph)
+lymphbenefit_uni <- strsplit(benefits_lymphatic, split=" ")
+lymphbenefit_uni1 <- lapply(lymphbenefit_uni,'[',1)
+lymphbenefit_uni1b <- as.character(lymphbenefit_uni1)
+lymphbenefit_uni2 <- lapply(lymphbenefit_uni,'[',2)
+lymphbenefit_uni2b <- as.character(lymphbenefit_uni2)
+lymphuni_benefits <- unique(c(lymphbenefit_uni1b,lymphbenefit_uni2b))
+benefits_lymph1 <- c(lymphuni_benefits, benefits_lymphatic) #
+
+both_lymph <- Lymph_contraindications %in% benefits_lymph1
+lymph1 <- Lymph_contraindications[both_lymph] #
+Lymph_contraindications1 <- Lymph_contraindications[both_lymph==FALSE] #
+
+```
+
+benefits_massagegun, contra_massagegun
+```{r}
+mgn_split <- strsplit(contra_massagegun,split=' ')
+mgn_split1 <- lapply(mgn_split, '[',1)
+mgn_split1b <- as.character(mgn_split1)
+mgn_split2 <- lapply(mgn_split, '[',2)
+mgn_split2b <- as.character(mgn_split2)
+mgn_split3 <- lapply(mgn_split, '[',3)
+mgn_split3b <- as.character(mgn_split3)
+mgn_bi1 <- paste(mgn_split1b,mgn_split2b)
+mgn_bi2 <- paste(mgn_split2b,mgn_split3b)
+mgn_bi3 <- paste(mgn_split3b,mgn_split1b)
+uni_mgn <- unique(c(mgn_split1b, mgn_split2b, mgn_split3b))
+bi_mgn <- unique(c(mgn_bi1, mgn_bi2, mgn_bi3))
+Mgn_contraindications <- c(contra_massagegun, bi_mgn, uni_mgn)
+mgnbenefit_uni <- strsplit(benefits_massagegun, split=" ")
+mgnbenefit_uni1 <- lapply(mgnbenefit_uni,'[',1)
+mgnbenefit_uni1b <- as.character(mgnbenefit_uni1)
+mgnbenefit_uni2 <- lapply(mgnbenefit_uni,'[',2)
+mgnbenefit_uni2b <- as.character(mgnbenefit_uni2)
+mgnuni_benefits <- unique(c(mgnbenefit_uni1b,mgnbenefit_uni2b))
+benefits_mgn1 <- c(mgnuni_benefits, benefits_massagegun) #
+
+both_mgn <- Mgn_contraindications %in% benefits_mgn1
+mgn1 <- Mgn_contraindications[both_mgn] #
+Mgn_contraindications1 <- Mgn_contraindications[both_mgn==FALSE] #
+
+
+```
+
+benefits_tpt, contra_tpt
+```{r}
+tpt_split <- strsplit(contra_tpt,split=' ')
+tpt_split1 <- lapply(tpt_split, '[',1)
+tpt_split1b <- as.character(tpt_split1)
+tpt_split2 <- lapply(tpt_split, '[',2)
+tpt_split2b <- as.character(tpt_split2)
+tpt_split3 <- lapply(tpt_split, '[',3)
+tpt_split3b <- as.character(tpt_split3)
+tpt_bi1 <- paste(tpt_split1b,tpt_split2b)
+tpt_bi2 <- paste(tpt_split2b,tpt_split3b)
+tpt_bi3 <- paste(tpt_split3b,tpt_split1b)
+uni_tpt <- unique(c(tpt_split1b, tpt_split2b, tpt_split3b))
+bi_tpt <- unique(c(tpt_bi1, tpt_bi2, tpt_bi3))
+TPT_contraindications <- c(contra_tpt, bi_tpt, uni_tpt)
+tptbenefit_uni <- strsplit(benefits_tpt, split=" ")
+tptbenefit_uni1 <- lapply(tptbenefit_uni,'[',1)
+tptbenefit_uni1b <- as.character(tptbenefit_uni1)
+tptbenefit_uni2 <- lapply(tptbenefit_uni,'[',2)
+tptbenefit_uni2b <- as.character(tptbenefit_uni2)
+tptuni_benefits <- unique(c(tptbenefit_uni1b,tptbenefit_uni2b))
+benefits_tpt1 <- c(tptuni_benefits, benefits_tpt) #
+
+both_tpt <- TPT_contraindications %in% benefits_tpt1
+tpt1 <- TPT_contraindications[both_tpt] #
+TPT_contraindications1 <- TPT_contraindications[both_tpt==FALSE] #
+
+
+```
+
+benefits_instrument, contra_instrument
+```{r}
+instrument_split <- strsplit(contra_instrument,split=' ')
+instrument_split1 <- lapply(instrument_split, '[',1)
+instrument_split1b <- as.character(instrument_split1)
+instrument_split2 <- lapply(instrument_split, '[',2)
+instrument_split2b <- as.character(instrument_split2)
+instrument_split3 <- lapply(instrument_split, '[',3)
+instrument_split3b <- as.character(instrument_split3)
+instrument_bi1 <- paste(instrument_split1b,instrument_split2b)
+instrument_bi2 <- paste(instrument_split2b,instrument_split3b)
+instrument_bi3 <- paste(instrument_split3b,instrument_split1b)
+uni_instrument <- unique(c(instrument_split1b, instrument_split2b, instrument_split3b))
+bi_instrument <- unique(c(instrument_bi1, instrument_bi2, instrument_bi3))
+Instrument_contraindications <- c(contra_instrument, bi_instrument, uni_instrument)
+instrumentbenefit_uni <- strsplit(benefits_instrument, split=" ")
+instrumentbenefit_uni1 <- lapply(instrumentbenefit_uni,'[',1)
+instrumentbenefit_uni1b <- as.character(instrumentbenefit_uni1)
+instrumentbenefit_uni2 <- lapply(instrumentbenefit_uni,'[',2)
+instrumentbenefit_uni2b <- as.character(instrumentbenefit_uni2)
+instrumentuni_benefits <- unique(c(instrumentbenefit_uni1b,instrumentbenefit_uni2b))
+benefits_instrument1 <- c(instrumentuni_benefits, benefits_instrument) #
+
+both_instrument <- Instrument_contraindications %in% benefits_instrument1
+instrument1 <- Instrument_contraindications[both_instrument] #
+Instrument_contraindications1 <- Instrument_contraindications[both_instrument==FALSE] #
+
+```
+
+benefits_DT, contra_DT
+```{r}
+DT_split <- strsplit(contra_DT,split=' ')
+DT_split1 <- lapply(DT_split, '[',1)
+DT_split1b <- as.character(DT_split1)
+DT_split2 <- lapply(DT_split, '[',2)
+DT_split2b <- as.character(DT_split2)
+DT_split3 <- lapply(DT_split, '[',3)
+DT_split3b <- as.character(DT_split3)
+DT_bi1 <- paste(DT_split1b,DT_split2b)
+DT_bi2 <- paste(DT_split2b,DT_split3b)
+DT_bi3 <- paste(DT_split3b,DT_split1b)
+uni_DT <- unique(c(DT_split1b, DT_split2b, DT_split3b))
+bi_DT <- unique(c(DT_bi1, DT_bi2, DT_bi3))
+DT_contraindications <- c(contra_DT, bi_DT, uni_DT)
+DTbenefit_uni <- strsplit(benefits_DT, split=" ")
+DTbenefit_uni1 <- lapply(DTbenefit_uni,'[',1)
+DTbenefit_uni1b <- as.character(DTbenefit_uni1)
+DTbenefit_uni2 <- lapply(DTbenefit_uni,'[',2)
+DTbenefit_uni2b <- as.character(DTbenefit_uni2)
+DTuni_benefits <- unique(c(DTbenefit_uni1b,DTbenefit_uni2b))
+benefits_DT1 <- c(DTuni_benefits, benefits_DT) #
+
+both_DT <- DT_contraindications %in% benefits_DT1
+DT1 <- DT_contraindications[both_DT] #
+DT_contraindications1 <- DT_contraindications[both_DT==FALSE] #
+
+
+```
+
+benefits_swedish, contra_swedish
+```{r}
+swedish_split <- strsplit(contra_swedish,split=' ')
+swedish_split1 <- lapply(swedish_split, '[',1)
+swedish_split1b <- as.character(swedish_split1)
+swedish_split2 <- lapply(swedish_split, '[',2)
+swedish_split2b <- as.character(swedish_split2)
+swedish_split3 <- lapply(swedish_split, '[',3)
+swedish_split3b <- as.character(swedish_split3)
+swedish_bi1 <- paste(swedish_split1b,swedish_split2b)
+swedish_bi2 <- paste(swedish_split2b,swedish_split3b)
+swedish_bi3 <- paste(swedish_split3b,swedish_split1b)
+uni_swedish <- unique(c(swedish_split1b, swedish_split2b, swedish_split3b))
+bi_swedish <- unique(c(swedish_bi1, swedish_bi2, swedish_bi3))
+swedish_contraindications <- c(contra_swedish, bi_swedish, uni_swedish)
+swedishbenefit_uni <- strsplit(benefits_swedish, split=" ")
+swedishbenefit_uni1 <- lapply(swedishbenefit_uni,'[',1)
+swedishbenefit_uni1b <- as.character(swedishbenefit_uni1)
+swedishbenefit_uni2 <- lapply(swedishbenefit_uni,'[',2)
+swedishbenefit_uni2b <- as.character(swedishbenefit_uni2)
+swedishuni_benefits <- unique(c(swedishbenefit_uni1b,swedishbenefit_uni2b))
+benefits_swedish1 <- c(swedishuni_benefits, benefits_swedish) #
+
+both_swedish <- swedish_contraindications %in% benefits_swedish1
+swedish1 <- swedish_contraindications[both_swedish] #
+swedish_contraindications1 <- swedish_contraindications[both_swedish==FALSE] #
+
+
+```
+
+benefits_aroma, contra_aroma
+```{r}
+aroma_split <- strsplit(contra_aroma,split=' ')
+aroma_split1 <- lapply(aroma_split, '[',1)
+aroma_split1b <- as.character(aroma_split1)
+aroma_split2 <- lapply(aroma_split, '[',2)
+aroma_split2b <- as.character(aroma_split2)
+aroma_split3 <- lapply(aroma_split, '[',3)
+aroma_split3b <- as.character(aroma_split3)
+aroma_bi1 <- paste(aroma_split1b,aroma_split2b)
+aroma_bi2 <- paste(aroma_split2b,aroma_split3b)
+aroma_bi3 <- paste(aroma_split3b,aroma_split1b)
+uni_aroma <- unique(c(aroma_split1b, aroma_split2b, aroma_split3b))
+bi_aroma <- unique(c(aroma_bi1, aroma_bi2, aroma_bi3))
+Aroma_contraindications <- c(contra_aroma, bi_aroma, uni_aroma)
+aromabenefit_uni <- strsplit(benefits_aroma, split=" ")
+aromabenefit_uni1 <- lapply(aromabenefit_uni,'[',1)
+aromabenefit_uni1b <- as.character(aromabenefit_uni1)
+aromabenefit_uni2 <- lapply(aromabenefit_uni,'[',2)
+aromabenefit_uni2b <- as.character(aromabenefit_uni2)
+aromauni_benefits <- unique(c(aromabenefit_uni1b,aromabenefit_uni2b))
+benefits_aroma1 <- c(aromauni_benefits, benefits_aroma) #
+
+both_aroma <- Aroma_contraindications %in% benefits_aroma1
+aroma1 <- Aroma_contraindications[both_aroma] #
+Aroma_contraindications1 <- Aroma_contraindications[both_aroma==FALSE] #
+
+
+```
+
+benefits_stretch, contra_stretch
+```{r}
+stretch_split <- strsplit(contra_stretch,split=' ')
+stretch_split1 <- lapply(stretch_split, '[',1)
+stretch_split1b <- as.character(stretch_split1)
+stretch_split2 <- lapply(stretch_split, '[',2)
+stretch_split2b <- as.character(stretch_split2)
+stretch_split3 <- lapply(stretch_split, '[',3)
+stretch_split3b <- as.character(stretch_split3)
+stretch_bi1 <- paste(stretch_split1b,stretch_split2b)
+stretch_bi2 <- paste(stretch_split2b,stretch_split3b)
+stretch_bi3 <- paste(stretch_split3b,stretch_split1b)
+uni_stretch <- unique(c(stretch_split1b, stretch_split2b, stretch_split3b))
+bi_stretch <- unique(c(stretch_bi1, stretch_bi2, stretch_bi3))
+stretch_contraindications <- c(contra_stretch, bi_stretch, uni_stretch)
+stretchbenefit_uni <- strsplit(benefits_stretch, split=" ")
+stretchbenefit_uni1 <- lapply(stretchbenefit_uni,'[',1)
+stretchbenefit_uni1b <- as.character(stretchbenefit_uni1)
+stretchbenefit_uni2 <- lapply(stretchbenefit_uni,'[',2)
+stretchbenefit_uni2b <- as.character(stretchbenefit_uni2)
+stretchuni_benefits <- unique(c(stretchbenefit_uni1b,stretchbenefit_uni2b))
+benefits_stretch1 <- c(stretchuni_benefits, benefits_stretch) #
+
+both_stretch <- stretch_contraindications %in% benefits_stretch1
+stretch1 <- stretch_contraindications[both_stretch] #
+stretch_contraindications1 <- stretch_contraindications[both_stretch==FALSE] #
+
+```
+
+benefits_cold, contra_cold
+```{r}
+cold_split <- strsplit(contra_cold,split=' ')
+cold_split1 <- lapply(cold_split, '[',1)
+cold_split1b <- as.character(cold_split1)
+cold_split2 <- lapply(cold_split, '[',2)
+cold_split2b <- as.character(cold_split2)
+cold_split3 <- lapply(cold_split, '[',3)
+cold_split3b <- as.character(cold_split3)
+cold_bi1 <- paste(cold_split1b,cold_split2b)
+cold_bi2 <- paste(cold_split2b,cold_split3b)
+cold_bi3 <- paste(cold_split3b,cold_split1b)
+uni_cold <- unique(c(cold_split1b, cold_split2b, cold_split3b))
+bi_cold <- unique(c(cold_bi1, cold_bi2, cold_bi3))
+cold_contraindications <- c(contra_cold, bi_cold, uni_cold)
+coldbenefit_uni <- strsplit(benefits_cold, split=" ")
+coldbenefit_uni1 <- lapply(coldbenefit_uni,'[',1)
+coldbenefit_uni1b <- as.character(coldbenefit_uni1)
+coldbenefit_uni2 <- lapply(coldbenefit_uni,'[',2)
+coldbenefit_uni2b <- as.character(coldbenefit_uni2)
+colduni_benefits <- unique(c(coldbenefit_uni1b,coldbenefit_uni2b))
+benefits_cold1 <- c(colduni_benefits, benefits_cold) #
+
+both_cold <- cold_contraindications %in% benefits_cold1
+cold1 <- cold_contraindications[both_cold] #
+cold_contraindications1 <- cold_contraindications[both_cold==FALSE] #
+
+
+```
+
+benefits_freeze, contra_freeze
+```{r}
+freeze_split <- strsplit(contra_freeze,split=' ')
+freeze_split1 <- lapply(freeze_split, '[',1)
+freeze_split1b <- as.character(freeze_split1)
+freeze_split2 <- lapply(freeze_split, '[',2)
+freeze_split2b <- as.character(freeze_split2)
+freeze_split3 <- lapply(freeze_split, '[',3)
+freeze_split3b <- as.character(freeze_split3)
+freeze_bi1 <- paste(freeze_split1b,freeze_split2b)
+freeze_bi2 <- paste(freeze_split2b,freeze_split3b)
+freeze_bi3 <- paste(freeze_split3b,freeze_split1b)
+uni_freeze <- unique(c(freeze_split1b, freeze_split2b, freeze_split3b))
+bi_freeze <- unique(c(freeze_bi1, freeze_bi2, freeze_bi3))
+Freeze_contraindications <- c(contra_freeze, bi_freeze, uni_freeze)
+freezebenefit_uni <- strsplit(benefits_freeze, split=" ")
+freezebenefit_uni1 <- lapply(freezebenefit_uni,'[',1)
+freezebenefit_uni1b <- as.character(freezebenefit_uni1)
+freezebenefit_uni2 <- lapply(freezebenefit_uni,'[',2)
+freezebenefit_uni2b <- as.character(freezebenefit_uni2)
+freezeuni_benefits <- unique(c(freezebenefit_uni1b,freezebenefit_uni2b))
+benefits_freeze1 <- c(freezeuni_benefits, benefits_freeze) #
+
+both_freeze <- Freeze_contraindications %in% benefits_freeze1
+freeze1 <- Freeze_contraindications[both_freeze] #
+Freeze_contraindications1 <- Freeze_contraindications[both_freeze==FALSE] #
+
+```
+
+benefits_sports, contra_sports
+```{r}
+sports_split <- strsplit(contra_sports,split=' ')
+sports_split1 <- lapply(sports_split, '[',1)
+sports_split1b <- as.character(sports_split1)
+sports_split2 <- lapply(sports_split, '[',2)
+sports_split2b <- as.character(sports_split2)
+sports_split3 <- lapply(sports_split, '[',3)
+sports_split3b <- as.character(sports_split3)
+sports_bi1 <- paste(sports_split1b,sports_split2b)
+sports_bi2 <- paste(sports_split2b,sports_split3b)
+sports_bi3 <- paste(sports_split3b,sports_split1b)
+uni_sports <- unique(c(sports_split1b, sports_split2b, sports_split3b))
+bi_sports <- unique(c(sports_bi1, sports_bi2, sports_bi3))
+Sports_contraindications <- c(contra_sports, bi_sports, uni_sports)
+sportsbenefit_uni <- strsplit(benefits_sports, split=" ")
+sportsbenefit_uni1 <- lapply(sportsbenefit_uni,'[',1)
+sportsbenefit_uni1b <- as.character(sportsbenefit_uni1)
+sportsbenefit_uni2 <- lapply(sportsbenefit_uni,'[',2)
+sportsbenefit_uni2b <- as.character(sportsbenefit_uni2)
+sportsuni_benefits <- unique(c(sportsbenefit_uni1b,sportsbenefit_uni2b))
+benefits_sports1 <- c(sportsuni_benefits, benefits_sports) #
+
+both_sports <- Sports_contraindications %in% benefits_sports1
+sports1 <- Sports_contraindications[both_sports] #
+Sports_contraindications1 <- Sports_contraindications[both_sports==FALSE] #
+
+```
+
+benefits_cup, contra_cup
+```{r}
+cup_split <- strsplit(contra_cup,split=' ')
+cup_split1 <- lapply(cup_split, '[',1)
+cup_split1b <- as.character(cup_split1)
+cup_split2 <- lapply(cup_split, '[',2)
+cup_split2b <- as.character(cup_split2)
+cup_split3 <- lapply(cup_split, '[',3)
+cup_split3b <- as.character(cup_split3)
+cup_bi1 <- paste(cup_split1b,cup_split2b)
+cup_bi2 <- paste(cup_split2b,cup_split3b)
+cup_bi3 <- paste(cup_split3b,cup_split1b)
+uni_cup <- unique(c(cup_split1b, cup_split2b, cup_split3b))
+bi_cup <- unique(c(cup_bi1, cup_bi2, cup_bi3))
+Cupping_contraindications <- c(contra_cup, bi_cup, uni_cup)
+cuppingbenefit_uni <- strsplit(benefits_cup, split=" ")
+cuppingbenefit_uni1 <- lapply(cuppingbenefit_uni,'[',1)
+cuppingbenefit_uni1b <- as.character(cuppingbenefit_uni1)
+cuppingbenefit_uni2 <- lapply(cuppingbenefit_uni,'[',2)
+cuppingbenefit_uni2b <- as.character(cuppingbenefit_uni2)
+cuppinguni_benefits <- unique(c(cuppingbenefit_uni1b,cuppingbenefit_uni2b))
+benefits_cup1 <- c(cuppinguni_benefits, benefits_cup) #
+
+both_cup <- Cupping_contraindications %in% benefits_cup1
+cup1 <- Cupping_contraindications[both_cup] #
+Cupping_contraindications1 <- Cupping_contraindications[both_cup==FALSE] #
+
+
+```
+
+benefits_hs, contra_hs
+```{r}
+HotStone_split <- strsplit(contra_hs,split=' ')
+HotStone_split1 <- lapply(HotStone_split, '[',1)
+HotStone_split1b <- as.character(HotStone_split1)
+HotStone_split2 <- lapply(HotStone_split, '[',2)
+HotStone_split2b <- as.character(HotStone_split2)
+HotStone_split3 <- lapply(HotStone_split, '[',3)
+HotStone_split3b <- as.character(HotStone_split3)
+HotStone_bi1 <- paste(HotStone_split1b,HotStone_split2b)
+HotStone_bi2 <- paste(HotStone_split2b,HotStone_split3b)
+HotStone_bi3 <- paste(HotStone_split3b,HotStone_split1b)
+uni_HotStone <- unique(c(HotStone_split1b, HotStone_split2b, HotStone_split3b))
+bi_HotStone <- unique(c(HotStone_bi1, HotStone_bi2, HotStone_bi3))
+HotStone_contraindications <- c(contra_hs, bi_HotStone, uni_HotStone)
+hsbenefit_uni <- strsplit(benefits_hs, split=" ")
+hsbenefit_uni1 <- lapply(hsbenefit_uni,'[',1)
+hsbenefit_uni1b <- as.character(hsbenefit_uni1)
+hsbenefit_uni2 <- lapply(hsbenefit_uni,'[',2)
+hsbenefit_uni2b <- as.character(hsbenefit_uni2)
+hsuni_benefits <- unique(c(hsbenefit_uni1b,hsbenefit_uni2b))
+benefits_HotStone1 <- c(hsuni_benefits, benefits_hs) #
+
+both_HotStone <- HotStone_contraindications %in% benefits_HotStone1
+HotStone1 <- HotStone_contraindications[both_HotStone] #
+HotStone_contraindications1 <- HotStone_contraindications[both_HotStone==FALSE] #
+
+```
+
+benefits_shiatsu, contra_shiatsu
+```{r}
+shiatsu_split <- strsplit(contra_shiatsu,split=' ')
+shiatsu_split1 <- lapply(shiatsu_split, '[',1)
+shiatsu_split1b <- as.character(shiatsu_split1)
+shiatsu_split2 <- lapply(shiatsu_split, '[',2)
+shiatsu_split2b <- as.character(shiatsu_split2)
+shiatsu_split3 <- lapply(shiatsu_split, '[',3)
+shiatsu_split3b <- as.character(shiatsu_split3)
+shiatsu_bi1 <- paste(shiatsu_split1b,shiatsu_split2b)
+shiatsu_bi2 <- paste(shiatsu_split2b,shiatsu_split3b)
+shiatsu_bi3 <- paste(shiatsu_split3b,shiatsu_split1b)
+uni_shiatsu <- unique(c(shiatsu_split1b, shiatsu_split2b, shiatsu_split3b))
+bi_shiatsu <- unique(c(shiatsu_bi1, shiatsu_bi2, shiatsu_bi3))
+Shiatsu_contraindications <- c(contra_shiatsu, bi_shiatsu, uni_shiatsu)
+shiatsubenefit_uni <- strsplit(benefits_shiatsu, split=" ")
+shiatsubenefit_uni1 <- lapply(shiatsubenefit_uni,'[',1)
+shiatsubenefit_uni1b <- as.character(shiatsubenefit_uni1)
+shiatsubenefit_uni2 <- lapply(shiatsubenefit_uni,'[',2)
+shiatsubenefit_uni2b <- as.character(shiatsubenefit_uni2)
+shiatsuuni_benefits <- unique(c(shiatsubenefit_uni1b,shiatsubenefit_uni2b))
+benefits_shiatsu1 <- c(shiatsuuni_benefits, benefits_shiatsu) #
+
+both_shiatsu <- Shiatsu_contraindications %in% benefits_shiatsu1
+shiatsu1 <- Shiatsu_contraindications[both_shiatsu] #
+Shiatsu_contraindications1 <- Shiatsu_contraindications[both_shiatsu==FALSE] #
+
+```
+
+benefits_prenatal, contra_prenatal
+```{r}
+prenatal_split <- strsplit(contra_prenatal,split=' ')
+prenatal_split1 <- lapply(prenatal_split, '[',1)
+prenatal_split1b <- as.character(prenatal_split1)
+prenatal_split2 <- lapply(prenatal_split, '[',2)
+prenatal_split2b <- as.character(prenatal_split2)
+prenatal_split3 <- lapply(prenatal_split, '[',3)
+prenatal_split3b <- as.character(prenatal_split3)
+prenatal_bi1 <- paste(prenatal_split1b,prenatal_split2b)
+prenatal_bi2 <- paste(prenatal_split2b,prenatal_split3b)
+prenatal_bi3 <- paste(prenatal_split3b,prenatal_split1b)
+uni_prenatal <- unique(c(prenatal_split1b, prenatal_split2b, prenatal_split3b))
+bi_prenatal <- unique(c(prenatal_bi1, prenatal_bi2, prenatal_bi3))
+Prenatal_contraindications <- c(contra_prenatal, bi_prenatal, uni_prenatal)
+prenatalbenefit_uni <- strsplit(benefits_prenatal, split=" ")
+prenatalbenefit_uni1 <- lapply(prenatalbenefit_uni,'[',1)
+prenatalbenefit_uni1b <- as.character(prenatalbenefit_uni1)
+prenatalbenefit_uni2 <- lapply(prenatalbenefit_uni,'[',2)
+prenatalbenefit_uni2b <- as.character(prenatalbenefit_uni2)
+prenataluni_benefits <- unique(c(prenatalbenefit_uni1b,prenatalbenefit_uni2b))
+benefits_prenatal1 <- c(prenataluni_benefits, benefits_prenatal) #
+
+both_prenatal <- Prenatal_contraindications %in% benefits_prenatal1
+prenatal1 <- Prenatal_contraindications[both_prenatal] #
+Prenatal_contraindications1 <- Prenatal_contraindications[both_prenatal==FALSE] #
+
+
+```
+
+benefits_myofascial, contra_myofascial
+```{r}
+myofascial_split <- strsplit(contra_myofascial,split=' ')
+myofascial_split1 <- lapply(myofascial_split, '[',1)
+myofascial_split1b <- as.character(myofascial_split1)
+myofascial_split2 <- lapply(myofascial_split, '[',2)
+myofascial_split2b <- as.character(myofascial_split2)
+myofascial_split3 <- lapply(myofascial_split, '[',3)
+myofascial_split3b <- as.character(myofascial_split3)
+myofascial_bi1 <- paste(myofascial_split1b,myofascial_split2b)
+myofascial_bi2 <- paste(myofascial_split2b,myofascial_split3b)
+myofascial_bi3 <- paste(myofascial_split3b,myofascial_split1b)
+uni_myofascial <- unique(c(myofascial_split1b, myofascial_split2b, myofascial_split3b))
+bi_myofascial <- unique(c(myofascial_bi1, myofascial_bi2, myofascial_bi3))
+Myofascial_contraindications <- c(contra_myofascial, bi_myofascial, uni_myofascial)
+myofascialbenefit_uni <- strsplit(benefits_myofascial, split=" ")
+myofascialbenefit_uni1 <- lapply(myofascialbenefit_uni,'[',1)
+myofascialbenefit_uni1b <- as.character(myofascialbenefit_uni1)
+myofascialbenefit_uni2 <- lapply(myofascialbenefit_uni,'[',2)
+myofascialbenefit_uni2b <- as.character(myofascialbenefit_uni2)
+myofascialuni_benefits <- unique(c(myofascialbenefit_uni1b,myofascialbenefit_uni2b))
+benefits_myofascial1 <- c(myofascialuni_benefits, benefits_myofascial) #
+
+both_myofascial <- Myofascial_contraindications %in% benefits_myofascial1
+myofascial1 <- Myofascial_contraindications[both_myofascial] #
+Myofascial_contraindications1 <- Myofascial_contraindications[both_myofascial==FALSE] #
+
+
+```
+
+
+***
+
+Now that we have our lists of better contraindications and better benefits for each massage modality, and the tokens commen to both, we should start building our recommender system for massage that first excludes any modality that has the tokens for contraindications based on a user input, then use the user input to recommend a massage or many massages based on the tokens that fit into the benefits of each modality.
+
+We should first start by tokenizing a list the same way we did with the model that produced these tokens. We did this in python, and we could go back to python, or we could tokenize in R with the same packages used in an earlier text mining script called SentimentAnalysisReviewsMixedBusinessModels2.Rmd (reviewsYelp2 desktop folder) from the tm, tidytext, textstem, stringr, dplyr, and tidyverse R packages.
+
+We will lemmatize the tokens of the benefits and contraindications each separately and also the Description and sideEffects to possibly use later.
+```{r}
+modes <- read.csv('MassageModalities2.csv', sep=',', header=TRUE, na.strings=c('',' ','NA'))
+colnames(modes)[1] <- 'modality'
+
+modes$lemmaDescription <- lemmatize_strings(modes$Description, dictionary=lexicon::hash_lemmas)
+modes$lemmaBenefits <- lemmatize_strings(modes$benefits, dictionary=lexicon::hash_lemmas)
+modes$lemmaContraindications <- lemmatize_strings(modes$contraindications,
+                                                  dictionary=lexicon::hash_lemmas)
+modes$lemmaSideEffects <- lemmatize_strings(modes$sideEffects, dictionary=lexicon::hash_lemmas)
+
+```
+
+Then we will take the bigrams of the lemmatized benefits, and trigrams of the lemmatized contraindications.
+```{r}
+lemmaTable <- tibble(line=1:456, Modality=modes$modality,
+                  Description=modes$lemmaDescription,
+                  SideEffects=modes$lemmaSideEffects,
+                  Benefits=modes$lemmaBenefits,
+                  Contraindications=modes$lemmaContraindications
+                  )
+
+bigram_df <- lemmaTable %>% unnest_tokens(BenefitsBigram, Benefits, token='ngrams',n=2) 
+bigram_df2 <- bigram_df %>% count(BenefitsBigram, sort=TRUE)
+
+bigram_separate <- bigram_df2 %>%
+  separate(BenefitsBigram, c('word1','word2'), sep=' ') 
+
+bigram_noStops <- bigram_separate %>%
+  filter(!word1 %in% stop_words$word) %>%
+  filter(!word2 %in% stop_words$word) 
+
+bigram_counts <- bigram_noStops %>% count(word1,word2,sort=TRUE)
+
+
+
+trigram_df <- lemmaTable %>% unnest_tokens(ContraindicationsTrigram,Contraindications,
+                                           token='ngrams',n=3)
+trigram_df2 <- trigram_df %>% count(ContraindicationsTrigram, sort=TRUE)
+
+trigram_separate <- trigram_df2 %>% separate(ContraindicationsTrigram,
+                                             c('word1','word2','word3'), sep=' ')
+
+trigram_noStops <- trigram_separate %>% filter(!word1 %in% stop_words$word)%>%
+  filter(!word2 %in% stop_words$word) %>% filter(!word3 %in% stop_words$word)
+
+trigram_noStops_counts <- trigram_noStops %>% count(word1,word2,word3, sort=TRUE)
+
+```
+
+
+```{r}
+colnames(bigram_counts)
+bigram_counts
+```
+
+```{r}
+colnames(trigram_noStops_counts)
+trigram_noStops_counts
+```
+
+```{r}
+quadgram_description <- lemmaTable %>% unnest_tokens(DescriptionQuadgram,Description,
+                                           token='ngrams',n=4)
+quadgram_description
+
+```
+
+The tidytext has the great tokenization feature, but doesn't allow groups of more than one ngram, such as setting ngrams to a list like n=c(1,4), as the python 3 nltk package does. But it can be worked around if needed to get those values separately or as we did with string literals earlier when filtering the tokenized words for better tokens of benefits and contraindications for massage.
+
+We aren't much concerned with counts, as this goal was to get the contraindications, from 24 identical samples for each of 19 massage modality benefits or contraindications, so the counts are not necessary because there won't be much variance if any, and it was only if there was a count greater than zero that interested this script's focus. But it is useful to have the counts listed above for each ngram.
+
+Right now, the goal is to build the same extracted tokens as we did earlier in python then use a function to wrap around a user input that will tokenize the input and transform it into the same matrices as was done in python. I am not sure how or what programs to use in R to do that at the moment and won't spend time searching to finish this task. So it is tempting to switch back to python using R's reticulate library to run python script in the RStudio console. But the whole purpose of this section is to build a program that will:
+
+1.) Use input from a user and tokenize the input by:
+    a.) lemmatizing the input
+    b.) extracting the:
+        i.) unigrams
+        ii.) bigrams
+        iii.) trigrams
+    
+2.) Then take those lemmatized ngrams, and:
+    a.) compare to our tokenized list of contraindications for all modalities
+    b.) create a list of every modality the input is a contraindication for
+    c.) create a list of available massages by:
+        i.) removing any modality in 2.b for the user to choose from
+        ii.) this will be a separate list of available modalities
+    
+3.) take the uni and bi gram lemmatized tokens of the user input in 1.b then:
+    a.) compare to the list of available modalities in 2.c.ii. and make a list
+    b.) from this list, any of the tokens that match the user input tokens:
+        i.) add to a list of recommended massage modality
+        ii.) here the more tokens per modality is needed from user input tokens
+        to select the modality with the highest counts of tokens for benefits
+        iii.) If there is a tie for massage modality recommended, then output all
+        available massages and:
+            -also provide the massage modality description
+            -also provide the massage modality side effects
+            
 

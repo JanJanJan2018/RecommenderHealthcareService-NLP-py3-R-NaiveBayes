@@ -49,3 +49,41 @@ Cranio_contraindications1 <- Cranio_contraindications[both_cranio==FALSE] #
 ###
 
 
+#####
+
+
+modes$lemmaDescription <- lemmatize_strings(modes$Description, dictionary=lexicon::hash_lemmas)
+
+lemmaTable <- tibble(line=1:456, Modality=modes$modality,
+                     Description=modes$lemmaDescription,
+                     SideEffects=modes$lemmaSideEffects,
+                     Benefits=modes$lemmaBenefits,
+                     Contraindications=modes$lemmaContraindications
+)
+
+unigram_df <- lemmaTable %>% unnest_tokens(BenefitsUnigram, Benefits, token='ngrams',n=1)
+bigram_df <- lemmaTable %>% unnest_tokens(BenefitsBigram, Benefits, token='ngrams',n=2) 
+trigram_df <- lemmaTable %>% unnest_tokens(ContraindicationsTrigram,Contraindications,
+                                           token='ngrams',n=3)
+
+trigram_separate <- trigram_df2 %>% separate(ContraindicationsTrigram,
+                                             c('word1','word2','word3'), sep=' ')
+
+trigram_noStops <- trigram_separate %>% filter(!word1 %in% stop_words$word)%>%
+  filter(!word2 %in% stop_words$word) %>% filter(!word3 %in% stop_words$word)
+
+#####
+
+names <- c('cbd','craniosacral','reflexology','lymphatic','massagegun','IASTM',
+           'deepTissue','swedish','aromatherapy','stretch','triggerPoint','hotStone',
+           'cupping','sports','biofreeze','coldStone','shiatsu','prenatal','myofascial')
+
+probs <- c(cbd,craniosacral,reflexology,lymphatic,massagegun,IASTM,deepTissue,
+           swedish,aromatherapy,stretch,triggerPoint,hotStone,cupping,sports,
+           biofreeze,coldStone,shiatsu,prenatal,myofascial)
+
+probabilities <- as.data.frame(c(names,probs))
+colnames(probabilities) <- c('modality','probability')
+
+
+###

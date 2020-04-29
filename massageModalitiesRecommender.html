@@ -439,11 +439,11 @@ library(tm)</code></pre>
 <pre class="r"><code>library(tidytext)</code></pre>
 <pre><code>## Warning: package &#39;tidytext&#39; was built under R version 3.6.3</code></pre>
 <pre class="r"><code>library(tidyverse)</code></pre>
-<pre><code>## -- Attaching packages --------------------------------------- tidyverse 1.3.0 --</code></pre>
+<pre><code>## -- Attaching packages ------------------------------------------------------------- tidyverse 1.3.0 --</code></pre>
 <pre><code>## v ggplot2 3.2.1     v readr   1.3.1
 ## v tibble  2.1.3     v purrr   0.3.3
 ## v tidyr   1.0.0     v forcats 0.4.0</code></pre>
-<pre><code>## -- Conflicts ------------------------------------------ tidyverse_conflicts() --
+<pre><code>## -- Conflicts ---------------------------------------------------------------- tidyverse_conflicts() --
 ## x ggplot2::annotate() masks NLP::annotate()
 ## x dplyr::filter()     masks stats::filter()
 ## x dplyr::lag()        masks stats::lag()
@@ -709,13 +709,13 @@ rf_model=rf.fit(ngram23Train,y_train)
 end=time.time()
 fit_time=(end-start)
 fit_time</code></pre>
-<pre><code>## 0.5196897983551025</code></pre>
+<pre><code>## 0.8689403533935547</code></pre>
 <pre class="python"><code>start=time.time()
 y_pred=rf_model.predict(ngram23Test)
 end=time.time()
 pred_time=(end-start)
 pred_time</code></pre>
-<pre><code>## 0.14101696014404297</code></pre>
+<pre><code>## 0.30201005935668945</code></pre>
 <pre class="python"><code>
 prd = pd.DataFrame(y_pred)
 prd.columns=[&#39;Predicted&#39;]
@@ -794,13 +794,13 @@ gb_model=gb.fit(ngram23Train,y_train)
 end=time.time()
 fit_time=(end-start)
 fit_time</code></pre>
-<pre><code>## 7.544563055038452</code></pre>
+<pre><code>## 7.249192237854004</code></pre>
 <pre class="python"><code>start=time.time()
 y_pred=gb_model.predict(ngram23Test)
 end=time.time()
 pred_time=(end-start)
 pred_time</code></pre>
-<pre><code>## 0.08802461624145508</code></pre>
+<pre><code>## 0.03501009941101074</code></pre>
 <pre class="python"><code>prd = pd.DataFrame(y_pred)
 prd.columns=[&#39;Predicted&#39;]
 
@@ -2338,6 +2338,365 @@ quadgram_description</code></pre>
 <p>1.) Use input from a user and tokenize the input by: a.) lemmatizing the input b.) extracting the: i.) unigrams ii.) bigrams iii.) trigrams</p>
 <p>2.) Then take those lemmatized ngrams, and: a.) compare to our tokenized list of contraindications for all modalities b.) create a list of every modality the input is a contraindication for c.) create a list of available massages by: i.) removing any modality in 2.b for the user to choose from ii.) this will be a separate list of available modalities</p>
 <p>3.) take the uni and bi gram lemmatized tokens of the user input in 1.b then: a.) compare to the list of available modalities in 2.c.ii. and make a list b.) from this list, any of the tokens that match the user input tokens: i.) add to a list of recommended massage modality ii.) here the more tokens per modality is needed from user input tokens to select the modality with the highest counts of tokens for benefits iii.) If there is a tie for massage modality recommended, then output all available massages and: -also provide the massage modality description -also provide the massage modality side effects</p>
+<p>This doesn’t work in Rmarkdown.</p>
+<pre class="r"><code># userRequest &lt;- readline(prompt=&quot;Please tell us what makes you want a massage today, such as how your feeling, and briefly if you have a headache, pain, a cold, congestion, allergies, health history, pregnant, epileptic, had a history of seizures or aneurisms, or anything else you can think of so that we can recommend a massage for you that isn&#39;t contraindicated for your needs. &quot;)
+# 
+# print(userRequest)</code></pre>
+<p>We will use a program defined request.</p>
+<pre class="r"><code>userInput &lt;- function(input){
+    input &lt;- as.character(paste(input))
+    input
+    
+}
+
+print(&#39;Please explain what brings you in for a massage today, such as if you want to relax, its a gift, you have a headache, stressed at work, pain in the body, sore workouts, and briefly what your health is like and history of health.&#39;)</code></pre>
+<pre><code>## [1] &quot;Please explain what brings you in for a massage today, such as if you want to relax, its a gift, you have a headache, stressed at work, pain in the body, sore workouts, and briefly what your health is like and history of health.&quot;</code></pre>
+<pre class="r"><code>input1 &lt;- userInput(&#39;I have had headaches off and on, have seasonal allergies, my sleep is good, I have a history of stroke, and am on blood pressure medicine.&#39;)
+input2 &lt;- userInput(&#39;I just want to relax, and get massages regularly at a local massage place. I don\&#39;t have any pre-existing health conditions and like a deep pressure with focus on my upper back. I am over a cold that I had two weeks ago. I have a sunburn on my face, that you could avoid.&#39;)
+input3 &lt;- userInput(&#39;I have leukemia, but want cupping done. My neighbor says it is good for me and I never tried it. Also, I need medium to deep pressure and don\&#39;t want a light massage.&#39;)
+input1</code></pre>
+<pre><code>## [1] &quot;I have had headaches off and on, have seasonal allergies, my sleep is good, I have a history of stroke, and am on blood pressure medicine.&quot;</code></pre>
+<pre class="r"><code>input2</code></pre>
+<pre><code>## [1] &quot;I just want to relax, and get massages regularly at a local massage place. I don&#39;t have any pre-existing health conditions and like a deep pressure with focus on my upper back. I am over a cold that I had two weeks ago. I have a sunburn on my face, that you could avoid.&quot;</code></pre>
+<pre class="r"><code>input3</code></pre>
+<pre><code>## [1] &quot;I have leukemia, but want cupping done. My neighbor says it is good for me and I never tried it. Also, I need medium to deep pressure and don&#39;t want a light massage.&quot;</code></pre>
+<p>The problem with using the function is that escape characters need to be used. When using the readline() there is no need to worry about that.The following won’t display because it is set to FALSE for eval= in the r chunk header, but shows what it could be in a program.</p>
+<pre class="r"><code>input1 &lt;- readline(&#39;What makes you want a massage today? please explain your sleep, stress, health, health history, pressure used to, and last massage.&#39;)</code></pre>
+<p>Now to tokenize these user inputs. We need to create three functions that will get the uni, bi, and tri grams.</p>
+<pre class="r"><code>uni &lt;- as.character(c(&#39; &#39;))
+unitoken &lt;- function(input){
+    lemm1 &lt;- lemmatize_strings(input, dictionary=lexicon::hash_lemmas)
+    Lemm1 &lt;- tibble(line=1, unigram=lemm1)
+    unigram &lt;- unnest_tokens(Lemm1,userUnigram, unigram,token=&#39;ngrams&#39;,n=1)
+    uniNoStops &lt;- filter(unigram, !userUnigram %in% stop_words$word)
+    uniNoStops1 &lt;- as.character(paste(uniNoStops$userUnigram))
+    uniNoStops1
+    
+}
+
+unoInput1 &lt;- unitoken(input1)
+unoInput1</code></pre>
+<pre><code>## [1] &quot;headache&quot; &quot;seasonal&quot; &quot;allergy&quot;  &quot;sleep&quot;    &quot;history&quot;  &quot;stroke&quot;   &quot;blood&quot;   
+## [8] &quot;pressure&quot; &quot;medicine&quot;</code></pre>
+<pre class="r"><code>bitoken &lt;- function(input){
+    lemm2 &lt;- lemmatize_strings(input, dictionary=lexicon::hash_lemmas)
+    Lemm2 &lt;- tibble(line=1, bigram=lemm2)
+    bigram &lt;- unnest_tokens(Lemm2,userBigram, bigram,token=&#39;ngrams&#39;,n=2)
+    bigram_separate &lt;- bigram %&gt;% separate(userBigram,
+                                             c(&#39;word1&#39;,&#39;word2&#39;), sep=&#39; &#39;)
+    bigram_noStops &lt;- bigram_separate %&gt;% 
+        filter(!word1 %in% stop_words$word) %&gt;% 
+        filter(!word2 %in% stop_words$word) 
+    bigram &lt;- as.character(paste(bigram_noStops$word1,bigram_noStops$word2))
+    bigram
+}
+
+dosInput1 &lt;- bitoken(input1)
+dosInput1</code></pre>
+<pre><code>## [1] &quot;seasonal allergy&quot;  &quot;blood pressure&quot;    &quot;pressure medicine&quot;</code></pre>
+<pre class="r"><code>tritoken &lt;- function(input){
+    lemm3 &lt;- lemmatize_strings(input, dictionary=lexicon::hash_lemmas)
+    Lemm3 &lt;- tibble(line=1, trigram=lemm3)
+    trigram &lt;- unnest_tokens(Lemm3,userTrigram, trigram, token=&#39;ngrams&#39;,n=3)
+    trigram_separate &lt;- trigram %&gt;% separate(userTrigram, c(&#39;word1&#39;,&#39;word2&#39;,&#39;word3&#39;), sep=&#39; &#39;)
+    trigram_noStops &lt;- trigram_separate %&gt;% 
+        filter(!word1 %in% stop_words$word) %&gt;% 
+        filter(!word2 %in% stop_words$word) %&gt;%
+        filter(!word3 %in% stop_words$word)
+        
+    trigram &lt;- as.character(paste(trigram_noStops$word1,trigram_noStops$word2,
+                                  trigram_noStops$word3))
+    trigram
+}
+
+tresInput1 &lt;- tritoken(input1)
+tresInput1</code></pre>
+<pre><code>## [1] &quot;blood pressure medicine&quot;</code></pre>
+<p>Combine into one function the uni, bi, and tri grams.</p>
+<pre class="r"><code>uniBiTriTokens &lt;- function(input){
+
+    lemm1 &lt;- lemmatize_strings(input, dictionary=lexicon::hash_lemmas)
+    Lemm1 &lt;- tibble(line=1, unigram=lemm1)
+    unigram &lt;- unnest_tokens(Lemm1,userUnigram, unigram,token=&#39;ngrams&#39;,n=1)
+    uniNoStops &lt;- filter(unigram, !userUnigram %in% stop_words$word)
+    ungram &lt;- uniNoStops$userUnigram
+    
+    Lemm2 &lt;- tibble(line=1, bigram=lemm1)
+    bigram &lt;- unnest_tokens(Lemm2,userBigram, bigram,token=&#39;ngrams&#39;,n=2)
+    bigram_separate &lt;- bigram %&gt;% separate(userBigram,
+                                             c(&#39;word1&#39;,&#39;word2&#39;), sep=&#39; &#39;)
+    bigram_noStops &lt;- bigram_separate %&gt;% 
+        filter(!word1 %in% stop_words$word) %&gt;% 
+        filter(!word2 %in% stop_words$word) 
+    bigram &lt;- as.character(paste(bigram_noStops$word1,bigram_noStops$word2))
+
+    Lemm3 &lt;- tibble(line=1, trigram=lemm1)
+    trigram &lt;- unnest_tokens(Lemm3,userTrigram, trigram, token=&#39;ngrams&#39;,n=3)
+    trigram_separate &lt;- trigram %&gt;% separate(userTrigram, c(&#39;word1&#39;,&#39;word2&#39;,&#39;word3&#39;), sep=&#39; &#39;)
+    trigram_noStops &lt;- trigram_separate %&gt;% 
+        filter(!word1 %in% stop_words$word) %&gt;% 
+        filter(!word2 %in% stop_words$word) %&gt;%
+        filter(!word3 %in% stop_words$word)
+        
+    trigram &lt;- as.character(paste(trigram_noStops$word1,
+                                  trigram_noStops$word2,trigram_noStops$word3))
+    bt &lt;- append(bigram,trigram, after=length(bigram))
+    uniBiTriToken &lt;-append(ungram, bt, after=length(ungram))
+    uniBiTriToken
+}
+
+unDosTresGram &lt;- uniBiTriTokens(input1)
+unDosTresGram</code></pre>
+<pre><code>##  [1] &quot;headache&quot;                &quot;seasonal&quot;               
+##  [3] &quot;allergy&quot;                 &quot;sleep&quot;                  
+##  [5] &quot;history&quot;                 &quot;stroke&quot;                 
+##  [7] &quot;blood&quot;                   &quot;pressure&quot;               
+##  [9] &quot;medicine&quot;                &quot;seasonal allergy&quot;       
+## [11] &quot;blood pressure&quot;          &quot;pressure medicine&quot;      
+## [13] &quot;blood pressure medicine&quot;</code></pre>
+<p>We have our list and functio that will produce the bigrams, trigrams, and unigrams of a single user input. Now we need to compare this list of preprocessed, lemmatized, ngram tokens to the lists of tokens in each contraindication for each massage modality. And build a list of modalities this user input is not recommended. From there, we will compare that list of available modalities, to the list of tokens in the benefits of those modalities, and only keep those modalities the user input is recommended based on his or her input.</p>
+<p>As an aside, this would probably be similar to the automated prompts to most telecommunications and major credit cards like Capital One or Macy’s, where a user might possibly get lost, know what they want but don’t know how to input according to these tokens. That would not be a desired outcome of this model. But textual recommender, not based on voice to text recommendations. So the better the user inputs his or her health and massage goals the better the results, but also the better fine tuned our benefits and contraindications for how a user would input for example, a heart condition or symptoms related to health conditions, like a fever could vary user to user. As a refresher, our named lists of contraindications within each modality are:</p>
+<ul>
+<li>CBD_contraindications1</li>
+<li>Cranio_contraindications1</li>
+<li>Reflex_contraindications1</li>
+<li>Lymph_contraindications1</li>
+<li>Mgn_contraindications1</li>
+<li>TPT_contraindications1</li>
+<li>Instrument_contraindications1</li>
+<li>DT_contraindications1</li>
+<li>swedish_contraindications1</li>
+<li>Aroma_contraindications1</li>
+<li>stretch_contraindications1</li>
+<li>cold_contraindications1</li>
+<li>Freeze_contraindications1</li>
+<li>Sports_contraindications1</li>
+<li>Cupping_contraindications1</li>
+<li>HotStone_contraindications1</li>
+<li>Shiatsu_contraindications1</li>
+<li>Prenatal_contraindications1</li>
+<li>Myofascial_contraindications1</li>
+</ul>
+<p>Our function that separates the user input into bi-tri-uni-tokens is called uniBiTriTokens(), with the user input as the only argument as a string. We stored the first input as unDosTresGram. This is the list we need to compare to every modality list above to see if any of the tokens are in that list, and create a list that will be a list of unavailable massages.</p>
+<pre class="r"><code>unDosTresGram</code></pre>
+<pre><code>##  [1] &quot;headache&quot;                &quot;seasonal&quot;               
+##  [3] &quot;allergy&quot;                 &quot;sleep&quot;                  
+##  [5] &quot;history&quot;                 &quot;stroke&quot;                 
+##  [7] &quot;blood&quot;                   &quot;pressure&quot;               
+##  [9] &quot;medicine&quot;                &quot;seasonal allergy&quot;       
+## [11] &quot;blood pressure&quot;          &quot;pressure medicine&quot;      
+## [13] &quot;blood pressure medicine&quot;</code></pre>
+<pre class="r"><code>CBD_contraindications1</code></pre>
+<pre><code>##   [1] &quot;aneurism history cancer&quot;      &quot;autoimmune disease psychosis&quot;
+##   [3] &quot;breathing medication could&quot;   &quot;breathing ragged breathing&quot;  
+##   [5] &quot;breathing trouble breathing&quot;  &quot;cancer autoimmune disease&quot;   
+##   [7] &quot;cannabidiol allergy cbd&quot;      &quot;could interact cannabidiol&quot;  
+##   [9] &quot;dehydration fever rash&quot;       &quot;difficulty breathing ragged&quot; 
+##  [11] &quot;disease psychosis numbness&quot;   &quot;disorder nausea epilepsy&quot;    
+##  [13] &quot;epilepsy pregnant aneurism&quot;   &quot;fever rash infection&quot;        
+##  [15] &quot;history cancer autoimmune&quot;    &quot;infection mental disorder&quot;   
+##  [17] &quot;interact cannabidiol allergy&quot; &quot;limb limb numbness&quot;          
+##  [19] &quot;limb numbness nerve&quot;          &quot;medication could interact&quot;   
+##  [21] &quot;mental disorder nausea&quot;       &quot;nausea epilepsy pregnant&quot;    
+##  [23] &quot;nerve pain difficulty&quot;        &quot;nerve tingling nerve&quot;        
+##  [25] &quot;numbness limb limb&quot;           &quot;numbness nerve tingling&quot;     
+##  [27] &quot;pain difficulty breathing&quot;    &quot;pregnant aneurism history&quot;   
+##  [29] &quot;psychosis numbness limb&quot;      &quot;ragged breathing trouble&quot;    
+##  [31] &quot;rash infection mental&quot;        &quot;tingling nerve pain&quot;         
+##  [33] &quot;trouble breathing medication&quot; &quot;aneurism history&quot;            
+##  [35] &quot;autoimmune disease&quot;           &quot;breathing medication&quot;        
+##  [37] &quot;breathing ragged&quot;             &quot;breathing trouble&quot;           
+##  [39] &quot;cancer autoimmune&quot;            &quot;cannabidiol allergy&quot;         
+##  [41] &quot;could interact&quot;               &quot;dehydration fever&quot;           
+##  [43] &quot;difficulty breathing&quot;         &quot;disease psychosis&quot;           
+##  [45] &quot;disorder nausea&quot;              &quot;epilepsy pregnant&quot;           
+##  [47] &quot;fever rash&quot;                   &quot;history cancer&quot;              
+##  [49] &quot;infection mental&quot;             &quot;interact cannabidiol&quot;        
+##  [51] &quot;limb limb&quot;                    &quot;limb numbness&quot;               
+##  [53] &quot;medication could&quot;             &quot;mental disorder&quot;             
+##  [55] &quot;nausea epilepsy&quot;              &quot;nerve tingling&quot;              
+##  [57] &quot;numbness limb&quot;                &quot;numbness nerve&quot;              
+##  [59] &quot;pain difficulty&quot;              &quot;pregnant aneurism&quot;           
+##  [61] &quot;psychosis numbness&quot;           &quot;ragged breathing&quot;            
+##  [63] &quot;rash infection&quot;               &quot;tingling nerve&quot;              
+##  [65] &quot;trouble breathing&quot;            &quot;allergy cbd&quot;                 
+##  [67] &quot;cancer aneurism&quot;              &quot;psychosis autoimmune&quot;        
+##  [69] &quot;could breathing&quot;              &quot;breathing breathing&quot;         
+##  [71] &quot;disease cancer&quot;               &quot;cbd cannabidiol&quot;             
+##  [73] &quot;cannabidiol could&quot;            &quot;rash dehydration&quot;            
+##  [75] &quot;ragged difficulty&quot;            &quot;numbness disease&quot;            
+##  [77] &quot;epilepsy disorder&quot;            &quot;aneurism epilepsy&quot;           
+##  [79] &quot;infection fever&quot;              &quot;autoimmune history&quot;          
+##  [81] &quot;disorder infection&quot;           &quot;allergy interact&quot;            
+##  [83] &quot;nerve limb&quot;                   &quot;interact medication&quot;         
+##  [85] &quot;nausea mental&quot;                &quot;pregnant nausea&quot;             
+##  [87] &quot;difficulty nerve&quot;             &quot;nerve nerve&quot;                 
+##  [89] &quot;tingling numbness&quot;            &quot;breathing pain&quot;              
+##  [91] &quot;history pregnant&quot;             &quot;limb psychosis&quot;              
+##  [93] &quot;trouble ragged&quot;               &quot;mental rash&quot;                 
+##  [95] &quot;pain tingling&quot;                &quot;medication trouble&quot;          
+##  [97] &quot;aneurism&quot;                     &quot;autoimmune&quot;                  
+##  [99] &quot;breathing&quot;                    &quot;cancer&quot;                      
+## [101] &quot;cannabidiol&quot;                  &quot;could&quot;                       
+## [103] &quot;dehydration&quot;                  &quot;difficulty&quot;                  
+## [105] &quot;disease&quot;                      &quot;disorder&quot;                    
+## [107] &quot;epilepsy&quot;                     &quot;fever&quot;                       
+## [109] &quot;history&quot;                      &quot;infection&quot;                   
+## [111] &quot;interact&quot;                     &quot;limb&quot;                        
+## [113] &quot;medication&quot;                   &quot;mental&quot;                      
+## [115] &quot;nausea&quot;                       &quot;numbness&quot;                    
+## [117] &quot;pregnant&quot;                     &quot;psychosis&quot;                   
+## [119] &quot;ragged&quot;                       &quot;rash&quot;                        
+## [121] &quot;tingling&quot;                     &quot;trouble&quot;                     
+## [123] &quot;allergy&quot;                      &quot;cbd&quot;</code></pre>
+<p>The above shows the list of tokens in the user input, then the list of contraindications for CBD as a massage modality.</p>
+<pre class="r"><code>testCBD_contra &lt;- ifelse(unDosTresGram %in%  CBD_contraindications1,1,0)
+l &lt;- length(unDosTresGram)
+s &lt;- sum(testCBD_contra)
+l</code></pre>
+<pre><code>## [1] 13</code></pre>
+<pre class="r"><code>s</code></pre>
+<pre><code>## [1] 2</code></pre>
+<pre class="r"><code>notlikelyCBD &lt;- round(s/l,2)
+notlikelyCBD</code></pre>
+<pre><code>## [1] 0.15</code></pre>
+<pre class="r"><code>unDosTresGram[testCBD_contra&gt;0]</code></pre>
+<pre><code>## [1] &quot;allergy&quot; &quot;history&quot;</code></pre>
+<pre class="r"><code>input1</code></pre>
+<pre><code>## [1] &quot;I have had headaches off and on, have seasonal allergies, my sleep is good, I have a history of stroke, and am on blood pressure medicine.&quot;</code></pre>
+<p>We can see from above that the history is important, but it says stroke, which is a term not used as a heart condition from the contraindications listed for CBD or any of the modalities, because it listed blood pressure, blood clots, heart condition, and circulatory problems. So, adding in ‘stroke’ would be a good contraindication to add in. This is an example of dialect wording for heart diseases. There is probably a setting in one of these natural language processing libraries that accounts for synonyms. We will make a note of this for a later version. $%^</p>
+<p>Lets look at the contraindications for CBD to see how the input compares.</p>
+<pre class="r"><code>cbd &lt;- subset(modes, modes$modality==&#39;Cannabidiol (CBD) Massage Balm&#39;)[1,4]
+cbd</code></pre>
+<pre><code>## [1] dehydration,  fever,  rashes,  infection,  some mental disorders,  nausea,  epilepsy,  pregnant,  aneurism history,  cancer,  autoimmune disease, psychosis,   numbness in limbs,  limb numbness,  nerve tingling,  nerve pain,  difficulty breathing,  ragged breathing,  trouble breathing,  medications that could interact with cannabidiol,  allergies to CBD
+## 19 Levels: dehydration,  asthma,  allergies to fragrances,  epilepsy,  fever,  infection,  heart condition,  neuropathy,  pregnant,  breast feeding,  open wounds,  skin rashes,  eczema,  psoriasis,  sunburn,  sensitive skin,  sensitive to smells,  pregnant,  aneurism history,  cancer, psychosis,   numbness in limbs,  limb numbness,  nerve tingling,  nerve pain,  difficulty breathing,  ragged breathing,  trouble breathing,   ...</code></pre>
+<p>We can see that heart condition is in the list, but not blood pressure nor stroke. So, we should add those two conditions to our original data table and update in a new version. For now, since is is 15%, it is questionable, and with a doctor’s note it should be fine. CBD oil is safe at the levels sold by stores in CA &lt; 0.003% or 3/1000 parts of the product. So, we will keep it from our list of unavailable modalities for this user.</p>
+<p>Lets create a function to do just this for all 19 massage modalities. It will return a percent of not recommended that the modality is a contraindication for the user. The input would be the output of the user input from the uniBiTriTokens stored as a variable, so that the variable would be the input to this function, we will name nonRecommended().</p>
+<pre class="r"><code>notRecommended &lt;- function(uniBiTriTokensOutputVar){
+    
+        testCBD &lt;- ifelse(uniBiTriTokensOutputVar %in%  CBD_contraindications1,1,0)
+        l &lt;- length(uniBiTriTokensOutputVar)
+        s &lt;- sum(testCBD)
+        cbd &lt;- round(s/l,2)
+
+        testCranio &lt;- ifelse(uniBiTriTokensOutputVar %in%  Cranio_contraindications1,1,0)
+        l &lt;- length(uniBiTriTokensOutputVar)
+        s &lt;- sum(testCranio)
+        craniosacral &lt;- round(s/l,2)
+
+        testReflex &lt;- ifelse(uniBiTriTokensOutputVar %in%  Reflex_contraindications1,1,0)
+        l &lt;- length(uniBiTriTokensOutputVar)
+        s &lt;- sum(testReflex)
+        reflexology &lt;- round(s/l,2)
+
+        testLymph &lt;- ifelse(uniBiTriTokensOutputVar %in%  Lymph_contraindications1,1,0)
+        l &lt;- length(uniBiTriTokensOutputVar)
+        s &lt;- sum(testLymph)
+        lymphatic &lt;- round(s/l,2)
+
+        testMGN &lt;- ifelse(uniBiTriTokensOutputVar %in%  Mgn_contraindications1,1,0)
+        l &lt;- length(uniBiTriTokensOutputVar)
+        s &lt;- sum(testMGN)
+        massagegun &lt;- round(s/l,2)
+
+        testIASTM &lt;- ifelse(uniBiTriTokensOutputVar %in%  Instrument_contraindications1,1,0)
+        l &lt;- length(uniBiTriTokensOutputVar)
+        s &lt;- sum(testIASTM)
+        IASTM &lt;- round(s/l,2)
+
+        testDT &lt;- ifelse(uniBiTriTokensOutputVar %in%  DT_contraindications1,1,0)
+        l &lt;- length(uniBiTriTokensOutputVar)
+        s &lt;- sum(testDT)
+        deepTissue &lt;- round(s/l,2)
+
+        testSwedish &lt;- ifelse(uniBiTriTokensOutputVar %in% swedish_contraindications1,1,0)
+        l &lt;- length(uniBiTriTokensOutputVar)
+        s &lt;- sum(testSwedish)
+        swedish &lt;- round(s/l,2)
+
+        testAroma &lt;- ifelse(uniBiTriTokensOutputVar %in%  Aroma_contraindications1,1,0)
+        l &lt;- length(uniBiTriTokensOutputVar)
+        s &lt;- sum(testAroma)
+        aromatherapy &lt;- round(s/l,2)
+
+        testStretch &lt;- ifelse(uniBiTriTokensOutputVar %in%  stretch_contraindications1,1,0)
+        l &lt;- length(uniBiTriTokensOutputVar)
+        s &lt;- sum(testStretch)
+        stretch &lt;- round(s/l,2)
+
+        testTPT &lt;- ifelse(uniBiTriTokensOutputVar %in%  TPT_contraindications1,1,0)
+        l &lt;- length(uniBiTriTokensOutputVar)
+        s &lt;- sum(testTPT)
+        triggerPoint &lt;- round(s/l,2)
+
+        testHS &lt;- ifelse(uniBiTriTokensOutputVar %in%  HotStone_contraindications1,1,0)
+        l &lt;- length(uniBiTriTokensOutputVar)
+        s &lt;- sum(testHS)
+        hotStone &lt;- round(s/l,2)
+
+        testCups &lt;- ifelse(uniBiTriTokensOutputVar %in%  Cupping_contraindications1,1,0)
+        l &lt;- length(uniBiTriTokensOutputVar)
+        s &lt;- sum(testCups)
+        cupping &lt;- round(s/l,2)
+
+        testSports &lt;- ifelse(uniBiTriTokensOutputVar %in%  Sports_contraindications1,1,0)
+        l &lt;- length(uniBiTriTokensOutputVar)
+        s &lt;- sum(testSports)
+        sports &lt;- round(s/l,2)
+
+        testFreeze &lt;- ifelse(uniBiTriTokensOutputVar %in%  Freeze_contraindications1,1,0)
+        l &lt;- length(uniBiTriTokensOutputVar)
+        s &lt;- sum(testFreeze)
+        biofreeze &lt;- round(s/l,2)
+
+        testCold &lt;- ifelse(uniBiTriTokensOutputVar %in%  cold_contraindications1,1,0)
+        l &lt;- length(uniBiTriTokensOutputVar)
+        s &lt;- sum(testCold)
+        coldStone &lt;- round(s/l,2)
+
+        testShiatsu &lt;- ifelse(uniBiTriTokensOutputVar %in%  Shiatsu_contraindications1,1,0)
+        l &lt;- length(uniBiTriTokensOutputVar)
+        s &lt;- sum(testShiatsu)
+        shiatsu &lt;- round(s/l,2)
+
+        testPreg &lt;- ifelse(uniBiTriTokensOutputVar %in%  Prenatal_contraindications1,1,0)
+        l &lt;- length(uniBiTriTokensOutputVar)
+        s &lt;- sum(testPreg)
+        prenatal &lt;- round(s/l,2)
+
+        testMyo &lt;- ifelse(uniBiTriTokensOutputVar %in%  Myofascial_contraindications1,1,0)
+        l &lt;- length(uniBiTriTokensOutputVar)
+        s &lt;- sum(testMyo)
+        myofascial &lt;- round(s/l,2)
+        
+        names &lt;- c(&#39;cbd&#39;,&#39;craniosacral&#39;,&#39;reflexology&#39;,&#39;lymphatic&#39;,&#39;massagegun&#39;,&#39;IASTM&#39;,
+                   &#39;deepTissue&#39;,&#39;swedish&#39;,&#39;aromatherapy&#39;,&#39;stretch&#39;,&#39;triggerPoint&#39;,&#39;hotStone&#39;,
+                   &#39;cupping&#39;,&#39;sports&#39;,&#39;biofreeze&#39;,&#39;coldStone&#39;,&#39;shiatsu&#39;,&#39;prenatal&#39;,&#39;myofascial&#39;)
+        
+        probs &lt;- c(cbd,craniosacral,reflexology,lymphatic,massagegun,IASTM,deepTissue,
+                   swedish,aromatherapy,stretch,triggerPoint,hotStone,cupping,sports,
+                   biofreeze,coldStone,shiatsu,prenatal,myofascial)
+        
+        probabilities &lt;- as.data.frame(cbind(names,probs))
+        colnames(probabilities) &lt;- c(&#39;modality&#39;,&#39;probability&#39;)
+        probabilities$probability &lt;- as.numeric(paste(probabilities$probability))
+        
+        probabilities1 &lt;- subset(probabilities,
+                                 probabilities$probability&gt;min(probabilities$probability))
+        probabilities1
+}</code></pre>
+<pre class="r"><code>nr &lt;- notRecommended(unDosTresGram)
+nr</code></pre>
+<pre><code>##        modality probability
+## 1           cbd        0.15
+## 2  craniosacral        0.15
+## 6         IASTM        0.31
+## 9  aromatherapy        0.15
+## 13      cupping        0.31
+## 15    biofreeze        0.38
+## 16    coldStone        0.31
+## 18     prenatal        0.15</code></pre>
+<p>Now that we have the list of massages not to recommend for this user’s input, we can compare those tokens in the user input to the benefits tokens for each massage modality not in the modalities not recommended.</p>
 </div>
 
 

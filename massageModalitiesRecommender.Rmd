@@ -1758,3 +1758,313 @@ Right now, the goal is to build the same extracted tokens as we did earlier in p
             -also provide the massage modality side effects
             
 
+This doesn't work in Rmarkdown.
+```{r, eval=FALSE}
+
+# userRequest <- readline(prompt="Please tell us what makes you want a massage today, such as how your feeling, and briefly if you have a headache, pain, a cold, congestion, allergies, health history, pregnant, epileptic, had a history of seizures or aneurisms, or anything else you can think of so that we can recommend a massage for you that isn't contraindicated for your needs. ")
+# 
+# print(userRequest)
+
+```
+We will use a program defined request.
+```{r}
+
+userInput <- function(input){
+    input <- as.character(paste(input))
+    input
+    
+}
+
+print('Please explain what brings you in for a massage today, such as if you want to relax, its a gift, you have a headache, stressed at work, pain in the body, sore workouts, and briefly what your health is like and history of health.')
+  
+```
+
+```{r}
+input1 <- userInput('I have had headaches off and on, have seasonal allergies, my sleep is good, I have a history of stroke, and am on blood pressure medicine.')
+input2 <- userInput('I just want to relax, and get massages regularly at a local massage place. I don\'t have any pre-existing health conditions and like a deep pressure with focus on my upper back. I am over a cold that I had two weeks ago. I have a sunburn on my face, that you could avoid.')
+input3 <- userInput('I have leukemia, but want cupping done. My neighbor says it is good for me and I never tried it. Also, I need medium to deep pressure and don\'t want a light massage.')
+input1
+input2
+input3
+```
+
+The problem with using the function is that escape characters need to be used. When using the readline() there is no need to worry about that.The following won't display because it is set to FALSE for eval= in the r chunk header, but shows what it could be in a program.
+```{r,eval=FALSE}
+input1 <- readline('What makes you want a massage today? please explain your sleep, stress, health, health history, pressure used to, and last massage.')
+
+```
+
+Now to tokenize these user inputs. We need to create three functions that will get the uni, bi, and tri grams.
+```{r}
+uni <- as.character(c(' '))
+unitoken <- function(input){
+    lemm1 <- lemmatize_strings(input, dictionary=lexicon::hash_lemmas)
+    Lemm1 <- tibble(line=1, unigram=lemm1)
+    unigram <- unnest_tokens(Lemm1,userUnigram, unigram,token='ngrams',n=1)
+    uniNoStops <- filter(unigram, !userUnigram %in% stop_words$word)
+    uniNoStops1 <- as.character(paste(uniNoStops$userUnigram))
+    uniNoStops1
+    
+}
+
+unoInput1 <- unitoken(input1)
+unoInput1
+```
+
+
+```{r}
+bitoken <- function(input){
+    lemm2 <- lemmatize_strings(input, dictionary=lexicon::hash_lemmas)
+    Lemm2 <- tibble(line=1, bigram=lemm2)
+    bigram <- unnest_tokens(Lemm2,userBigram, bigram,token='ngrams',n=2)
+    bigram_separate <- bigram %>% separate(userBigram,
+                                             c('word1','word2'), sep=' ')
+    bigram_noStops <- bigram_separate %>% 
+        filter(!word1 %in% stop_words$word) %>% 
+        filter(!word2 %in% stop_words$word) 
+    bigram <- as.character(paste(bigram_noStops$word1,bigram_noStops$word2))
+    bigram
+}
+
+dosInput1 <- bitoken(input1)
+dosInput1
+
+```
+
+
+```{r}
+tritoken <- function(input){
+    lemm3 <- lemmatize_strings(input, dictionary=lexicon::hash_lemmas)
+    Lemm3 <- tibble(line=1, trigram=lemm3)
+    trigram <- unnest_tokens(Lemm3,userTrigram, trigram, token='ngrams',n=3)
+    trigram_separate <- trigram %>% separate(userTrigram, c('word1','word2','word3'), sep=' ')
+    trigram_noStops <- trigram_separate %>% 
+        filter(!word1 %in% stop_words$word) %>% 
+        filter(!word2 %in% stop_words$word) %>%
+        filter(!word3 %in% stop_words$word)
+        
+    trigram <- as.character(paste(trigram_noStops$word1,trigram_noStops$word2,
+                                  trigram_noStops$word3))
+    trigram
+}
+
+tresInput1 <- tritoken(input1)
+tresInput1
+```
+
+Combine into one function the uni, bi, and tri grams.
+```{r}
+uniBiTriTokens <- function(input){
+
+    lemm1 <- lemmatize_strings(input, dictionary=lexicon::hash_lemmas)
+    Lemm1 <- tibble(line=1, unigram=lemm1)
+    unigram <- unnest_tokens(Lemm1,userUnigram, unigram,token='ngrams',n=1)
+    uniNoStops <- filter(unigram, !userUnigram %in% stop_words$word)
+    ungram <- uniNoStops$userUnigram
+    
+    Lemm2 <- tibble(line=1, bigram=lemm1)
+    bigram <- unnest_tokens(Lemm2,userBigram, bigram,token='ngrams',n=2)
+    bigram_separate <- bigram %>% separate(userBigram,
+                                             c('word1','word2'), sep=' ')
+    bigram_noStops <- bigram_separate %>% 
+        filter(!word1 %in% stop_words$word) %>% 
+        filter(!word2 %in% stop_words$word) 
+    bigram <- as.character(paste(bigram_noStops$word1,bigram_noStops$word2))
+
+    Lemm3 <- tibble(line=1, trigram=lemm1)
+    trigram <- unnest_tokens(Lemm3,userTrigram, trigram, token='ngrams',n=3)
+    trigram_separate <- trigram %>% separate(userTrigram, c('word1','word2','word3'), sep=' ')
+    trigram_noStops <- trigram_separate %>% 
+        filter(!word1 %in% stop_words$word) %>% 
+        filter(!word2 %in% stop_words$word) %>%
+        filter(!word3 %in% stop_words$word)
+        
+    trigram <- as.character(paste(trigram_noStops$word1,
+                                  trigram_noStops$word2,trigram_noStops$word3))
+    bt <- append(bigram,trigram, after=length(bigram))
+    uniBiTriToken <-append(ungram, bt, after=length(ungram))
+    uniBiTriToken
+}
+
+unDosTresGram <- uniBiTriTokens(input1)
+unDosTresGram
+```
+
+We have our list and functio that will produce the bigrams, trigrams, and unigrams of a single user input. Now we need to compare this list of preprocessed, lemmatized, ngram tokens to the lists of tokens in each contraindication for each massage modality. And build a list of modalities this user input is not recommended. From there, we will compare that list of available modalities, to the list of tokens in the benefits of those modalities, and only keep those modalities the user input is recommended based on his or her input. 
+
+As an aside, this would probably be similar to the automated prompts to most telecommunications and major credit cards like Capital One or Macy's, where a user might possibly get lost, know what they want but don't know how to input according to these tokens. That would not be a desired outcome of this model. But textual recommender, not based on voice to text recommendations. So the better the user inputs his or her health and massage goals the better the results, but also the better fine tuned our benefits and contraindications for how a user would input for example, a heart condition or symptoms related to health conditions, like a fever could vary user to user. 
+As a refresher, our named lists of contraindications within each modality are: 
+
+- CBD_contraindications1
+- Cranio_contraindications1
+- Reflex_contraindications1
+- Lymph_contraindications1
+- Mgn_contraindications1
+- TPT_contraindications1
+- Instrument_contraindications1
+- DT_contraindications1
+- swedish_contraindications1
+- Aroma_contraindications1
+- stretch_contraindications1
+- cold_contraindications1
+- Freeze_contraindications1
+- Sports_contraindications1
+- Cupping_contraindications1
+- HotStone_contraindications1
+- Shiatsu_contraindications1
+- Prenatal_contraindications1
+- Myofascial_contraindications1
+
+Our function that separates the user input into bi-tri-uni-tokens is called uniBiTriTokens(), with the user input as the only argument as a string. We stored the first input as unDosTresGram.
+This is the list we need to compare to every modality list above to see if any of the tokens are in that list, and create a list that will be a list of unavailable massages.
+```{r}
+unDosTresGram
+CBD_contraindications1
+```
+The above shows the list of tokens in the user input, then the list of contraindications for CBD as a massage modality.
+```{r}
+testCBD_contra <- ifelse(unDosTresGram %in%  CBD_contraindications1,1,0)
+l <- length(unDosTresGram)
+s <- sum(testCBD_contra)
+l
+s
+notlikelyCBD <- round(s/l,2)
+notlikelyCBD
+unDosTresGram[testCBD_contra>0]
+input1
+```
+We can see from above that the history is important, but it says stroke, which is a term not used as a heart condition from the contraindications listed for CBD or any of the modalities, because it listed blood pressure, blood clots, heart condition, and circulatory problems. So, adding in 'stroke' would be a good contraindication to add in. This is an example of dialect wording for heart diseases. There is probably a setting in one of these natural language processing libraries that accounts for synonyms. We will make a note of this for a later version. $%^
+
+Lets look at the contraindications for CBD to see how the input compares.
+```{r}
+cbd <- subset(modes, modes$modality=='Cannabidiol (CBD) Massage Balm')[1,4]
+cbd
+```
+
+We can see that heart condition is in the list, but not blood pressure nor stroke. So, we should add those two conditions to our original data table and update in a new version. For now, since is is 15%, it is questionable, and with a doctor's note it should be fine. CBD oil is safe at the levels sold by stores in CA < 0.003% or 3/1000 parts of the product. So, we will keep it from our list of unavailable modalities for this user. 
+
+Lets create a function to do just this for all 19 massage modalities. It will return a percent of not recommended that the modality is a contraindication for the user. The input would be the output of the user input from the uniBiTriTokens stored as a variable, so that the variable would be the input to this function, we will name nonRecommended().
+```{r}
+
+notRecommended <- function(uniBiTriTokensOutputVar){
+    
+        testCBD <- ifelse(uniBiTriTokensOutputVar %in%  CBD_contraindications1,1,0)
+        l <- length(uniBiTriTokensOutputVar)
+        s <- sum(testCBD)
+        cbd <- round(s/l,2)
+
+        testCranio <- ifelse(uniBiTriTokensOutputVar %in%  Cranio_contraindications1,1,0)
+        l <- length(uniBiTriTokensOutputVar)
+        s <- sum(testCranio)
+        craniosacral <- round(s/l,2)
+
+        testReflex <- ifelse(uniBiTriTokensOutputVar %in%  Reflex_contraindications1,1,0)
+        l <- length(uniBiTriTokensOutputVar)
+        s <- sum(testReflex)
+        reflexology <- round(s/l,2)
+
+        testLymph <- ifelse(uniBiTriTokensOutputVar %in%  Lymph_contraindications1,1,0)
+        l <- length(uniBiTriTokensOutputVar)
+        s <- sum(testLymph)
+        lymphatic <- round(s/l,2)
+
+        testMGN <- ifelse(uniBiTriTokensOutputVar %in%  Mgn_contraindications1,1,0)
+        l <- length(uniBiTriTokensOutputVar)
+        s <- sum(testMGN)
+        massagegun <- round(s/l,2)
+
+        testIASTM <- ifelse(uniBiTriTokensOutputVar %in%  Instrument_contraindications1,1,0)
+        l <- length(uniBiTriTokensOutputVar)
+        s <- sum(testIASTM)
+        IASTM <- round(s/l,2)
+
+        testDT <- ifelse(uniBiTriTokensOutputVar %in%  DT_contraindications1,1,0)
+        l <- length(uniBiTriTokensOutputVar)
+        s <- sum(testDT)
+        deepTissue <- round(s/l,2)
+
+        testSwedish <- ifelse(uniBiTriTokensOutputVar %in% swedish_contraindications1,1,0)
+        l <- length(uniBiTriTokensOutputVar)
+        s <- sum(testSwedish)
+        swedish <- round(s/l,2)
+
+        testAroma <- ifelse(uniBiTriTokensOutputVar %in%  Aroma_contraindications1,1,0)
+        l <- length(uniBiTriTokensOutputVar)
+        s <- sum(testAroma)
+        aromatherapy <- round(s/l,2)
+
+        testStretch <- ifelse(uniBiTriTokensOutputVar %in%  stretch_contraindications1,1,0)
+        l <- length(uniBiTriTokensOutputVar)
+        s <- sum(testStretch)
+        stretch <- round(s/l,2)
+
+        testTPT <- ifelse(uniBiTriTokensOutputVar %in%  TPT_contraindications1,1,0)
+        l <- length(uniBiTriTokensOutputVar)
+        s <- sum(testTPT)
+        triggerPoint <- round(s/l,2)
+
+        testHS <- ifelse(uniBiTriTokensOutputVar %in%  HotStone_contraindications1,1,0)
+        l <- length(uniBiTriTokensOutputVar)
+        s <- sum(testHS)
+        hotStone <- round(s/l,2)
+
+        testCups <- ifelse(uniBiTriTokensOutputVar %in%  Cupping_contraindications1,1,0)
+        l <- length(uniBiTriTokensOutputVar)
+        s <- sum(testCups)
+        cupping <- round(s/l,2)
+
+        testSports <- ifelse(uniBiTriTokensOutputVar %in%  Sports_contraindications1,1,0)
+        l <- length(uniBiTriTokensOutputVar)
+        s <- sum(testSports)
+        sports <- round(s/l,2)
+
+        testFreeze <- ifelse(uniBiTriTokensOutputVar %in%  Freeze_contraindications1,1,0)
+        l <- length(uniBiTriTokensOutputVar)
+        s <- sum(testFreeze)
+        biofreeze <- round(s/l,2)
+
+        testCold <- ifelse(uniBiTriTokensOutputVar %in%  cold_contraindications1,1,0)
+        l <- length(uniBiTriTokensOutputVar)
+        s <- sum(testCold)
+        coldStone <- round(s/l,2)
+
+        testShiatsu <- ifelse(uniBiTriTokensOutputVar %in%  Shiatsu_contraindications1,1,0)
+        l <- length(uniBiTriTokensOutputVar)
+        s <- sum(testShiatsu)
+        shiatsu <- round(s/l,2)
+
+        testPreg <- ifelse(uniBiTriTokensOutputVar %in%  Prenatal_contraindications1,1,0)
+        l <- length(uniBiTriTokensOutputVar)
+        s <- sum(testPreg)
+        prenatal <- round(s/l,2)
+
+        testMyo <- ifelse(uniBiTriTokensOutputVar %in%  Myofascial_contraindications1,1,0)
+        l <- length(uniBiTriTokensOutputVar)
+        s <- sum(testMyo)
+        myofascial <- round(s/l,2)
+        
+        names <- c('cbd','craniosacral','reflexology','lymphatic','massagegun','IASTM',
+                   'deepTissue','swedish','aromatherapy','stretch','triggerPoint','hotStone',
+                   'cupping','sports','biofreeze','coldStone','shiatsu','prenatal','myofascial')
+        
+        probs <- c(cbd,craniosacral,reflexology,lymphatic,massagegun,IASTM,deepTissue,
+                   swedish,aromatherapy,stretch,triggerPoint,hotStone,cupping,sports,
+                   biofreeze,coldStone,shiatsu,prenatal,myofascial)
+        
+        probabilities <- as.data.frame(cbind(names,probs))
+        colnames(probabilities) <- c('modality','probability')
+        probabilities$probability <- as.numeric(paste(probabilities$probability))
+        
+        probabilities1 <- subset(probabilities,
+                                 probabilities$probability>min(probabilities$probability))
+        probabilities1
+}
+```
+
+```{r}
+nr <- notRecommended(unDosTresGram)
+nr
+```
+
+Now that we have the list of massages not to recommend for this user's input, we can compare those tokens in the user input to the benefits tokens for each massage modality not in the modalities not recommended.
+
